@@ -1,365 +1,458 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal, Image } from 'react-native';
+import { Stack } from 'expo-router';
 import { useState } from 'react';
+import { MaterialIcons } from '@expo/vector-icons';
+import Colors from '@/constants/Colors';
 
-const sharedGroups = [
+type Member = {
+  id: string;
+  email: string;
+  role: 'admin' | 'editor' | 'viewer';
+  avatar?: string;
+};
+
+type SharedReminder = {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  members: Member[];
+  isCompleted: boolean;
+};
+
+const mockReminders: SharedReminder[] = [
   {
-    id: 1,
-    name: 'Family',
+    id: '1',
+    title: 'Team Meeting',
+    date: '2024-03-20',
+    time: '10:00 AM',
     members: [
-      { id: 1, name: 'Alex', avatar: null },
-      { id: 2, name: 'Sarah', avatar: null },
-      { id: 3, name: 'Mom', avatar: null },
+      { id: '1', email: 'dan@example.com', role: 'admin' },
+      { id: '2', email: 'sarah@example.com', role: 'editor' },
     ],
-    reminders: [
-      {
-        id: 1,
-        title: 'Family Dinner',
-        time: 'Today, 7:00 PM',
-        assignedTo: 'Alex',
-        status: 'pending',
-      },
-      {
-        id: 2,
-        title: 'Grocery Shopping',
-        time: 'Tomorrow, 10:00 AM',
-        assignedTo: 'Sarah',
-        status: 'accepted',
-      },
-    ],
+    isCompleted: false,
   },
   {
-    id: 2,
-    name: 'Work Team',
+    id: '2',
+    title: 'Project Review',
+    date: '2024-03-21',
+    time: '2:00 PM',
     members: [
-      { id: 1, name: 'Alex', avatar: null },
-      { id: 4, name: 'John', avatar: null },
-      { id: 5, name: 'Emma', avatar: null },
+      { id: '1', email: 'dan@example.com', role: 'admin' },
+      { id: '3', email: 'mike@example.com', role: 'viewer' },
     ],
-    reminders: [
-      {
-        id: 3,
-        title: 'Team Meeting',
-        time: 'Today, 2:00 PM',
-        assignedTo: 'All',
-        status: 'accepted',
-      },
-    ],
+    isCompleted: false,
   },
 ];
 
-export default function SharedScreen() {
-  const [selectedGroup, setSelectedGroup] = useState(sharedGroups[0]);
+export default function SharedReminders() {
+  const [members, setMembers] = useState<Member[]>([]);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [newMemberEmail, setNewMemberEmail] = useState('');
+  const [newMemberRole, setNewMemberRole] = useState<Member['role']>('editor');
+  const [reminders, setReminders] = useState<SharedReminder[]>(mockReminders);
+  const [selectedReminder, setSelectedReminder] = useState<SharedReminder | null>(null);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'accepted':
-        return '#10b981';
-      case 'pending':
-        return '#f59e0b';
-      default:
-        return '#6b7280';
+  const handleAddMember = () => {
+    if (newMemberEmail) {
+      const newMember = {
+        id: Date.now().toString(),
+        email: newMemberEmail,
+        role: newMemberRole,
+      };
+      
+      if (selectedReminder) {
+        const updatedReminders = reminders.map(reminder => 
+          reminder.id === selectedReminder.id
+            ? { ...reminder, members: [...reminder.members, newMember] }
+            : reminder
+        );
+        setReminders(updatedReminders);
+      } else {
+        setMembers([...members, newMember]);
+      }
+      
+      setNewMemberEmail('');
+      setShowAddMember(false);
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase();
+  const handleRemoveMember = (reminderId: string, memberId: string) => {
+    const updatedReminders = reminders.map(reminder =>
+      reminder.id === reminderId
+        ? {
+            ...reminder,
+            members: reminder.members.filter(member => member.id !== memberId),
+          }
+        : reminder
+    );
+    setReminders(updatedReminders);
+  };
+
+  const toggleReminderComplete = (id: string) => {
+    setReminders(reminders.map(reminder =>
+      reminder.id === id
+        ? { ...reminder, isCompleted: !reminder.isCompleted }
+        : reminder
+    ));
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Shared Reminders</Text>
-        <TouchableOpacity style={styles.addButton}>
-          <MaterialIcons name="group-add" size={24} color="#1f2937" />
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <Stack.Screen options={{ title: 'Shared Reminders' }} />
 
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={styles.groupsContainer}
-      >
-        {sharedGroups.map((group) => (
+      <ScrollView style={styles.reminderList}>
+        {reminders.map((reminder) => (
+          <View key={reminder.id} style={styles.reminderCard}>
           <TouchableOpacity
-            key={group.id}
-            style={[
-              styles.groupCard,
-              selectedGroup.id === group.id && styles.selectedGroupCard,
-            ]}
-            onPress={() => setSelectedGroup(group)}
-          >
-            <Text 
-              style={[
-                styles.groupName,
-                selectedGroup.id === group.id && styles.selectedGroupName,
-              ]}
+              style={styles.reminderHeader}
+              onPress={() => toggleReminderComplete(reminder.id)}
             >
-              {group.name}
+              <MaterialIcons
+                name={reminder.isCompleted ? 'check-circle' : 'radio-button-unchecked'}
+                size={24}
+                color={reminder.isCompleted ? Colors.success : Colors.gray}
+              />
+              <View style={styles.reminderInfo}>
+                <Text style={[
+                  styles.reminderTitle,
+                  reminder.isCompleted && styles.completedText
+                ]}>
+                  {reminder.title}
+                </Text>
+                <Text style={styles.reminderDateTime}>
+                  {reminder.date} at {reminder.time}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.membersContainer}>
+              <Text style={styles.membersTitle}>Members:</Text>
+              {reminder.members.map((member) => (
+                <View key={member.id} style={styles.memberItem}>
+                  <View style={styles.memberInfo}>
+                    <View style={styles.memberAvatar}>
+                      <Text style={styles.memberInitial}>
+                        {member.email[0].toUpperCase()}
             </Text>
-            <View style={styles.avatarStack}>
-              {group.members.slice(0, 3).map((member, index) => (
-                <View
-                  key={member.id}
-                  style={[
-                    styles.avatar,
-                    { 
-                      zIndex: 3 - index,
-                      marginLeft: index > 0 ? -12 : 0,
-                    },
-                  ]}
-                >
-                  <Text style={styles.avatarText}>{getInitials(member.name)}</Text>
+                    </View>
+                    <View style={styles.memberDetails}>
+                      <Text style={styles.memberEmail}>{member.email}</Text>
+                      <Text style={styles.memberRole}>{member.role}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveMember(reminder.id, member.id)}
+                    style={styles.removeButton}
+                  >
+                    <MaterialIcons name="close" size={20} color={Colors.error} />
+                  </TouchableOpacity>
                 </View>
               ))}
-              {group.members.length > 3 && (
-                <View style={[styles.avatar, { marginLeft: -12, zIndex: 0 }]}>
-                  <Text style={styles.avatarText}>+{group.members.length - 3}</Text>
-                </View>
-              )}
+              <TouchableOpacity
+                style={styles.addMemberButton}
+                onPress={() => {
+                  setSelectedReminder(reminder);
+                  setShowAddMember(true);
+                }}
+              >
+                <MaterialIcons name="person-add" size={20} color={Colors.primary} />
+                <Text style={styles.addMemberText}>Add Member</Text>
+              </TouchableOpacity>
             </View>
-          </TouchableOpacity>
+          </View>
         ))}
       </ScrollView>
 
-      <View style={styles.content}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Members</Text>
-          <TouchableOpacity style={styles.addMemberButton}>
-            <MaterialIcons name="person-add" size={20} color="#6366f1" />
-            <Text style={styles.addMemberText}>Add Member</Text>
+      <Modal
+        visible={showAddMember}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAddMember(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add New Member</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowAddMember(false);
+                  setSelectedReminder(null);
+                }}
+              >
+                <MaterialIcons name="close" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Enter email address"
+              value={newMemberEmail}
+              onChangeText={setNewMemberEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <View style={styles.roleContainer}>
+              {(['admin', 'editor', 'viewer'] as const).map((role) => (
+                <TouchableOpacity
+                  key={role}
+                  style={[
+                    styles.roleButton,
+                    newMemberRole === role && styles.roleButtonActive,
+                  ]}
+                  onPress={() => setNewMemberRole(role)}
+                >
+                  <Text
+                    style={[
+                      styles.roleText,
+                      newMemberRole === role && styles.roleTextActive,
+                    ]}
+                  >
+                    {role.charAt(0).toUpperCase() + role.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setShowAddMember(false);
+                  setSelectedReminder(null);
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.addMemberButton]}
+                onPress={handleAddMember}
+              >
+                <Text style={styles.addMemberButtonText}>Add</Text>
           </TouchableOpacity>
+            </View>
+          </View>
         </View>
-
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          style={styles.membersContainer}
-        >
-          {selectedGroup.members.map((member) => (
-            <View key={member.id} style={styles.memberCard}>
-              <View style={styles.memberAvatar}>
-                <Text style={styles.memberAvatarText}>{getInitials(member.name)}</Text>
-              </View>
-              <Text style={styles.memberName}>{member.name}</Text>
-            </View>
-          ))}
-        </ScrollView>
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Reminders</Text>
-          <TouchableOpacity>
-            <Text style={styles.seeAll}>See All</Text>
-          </TouchableOpacity>
-        </View>
-
-        {selectedGroup.reminders.map((reminder) => (
-          <TouchableOpacity key={reminder.id} style={styles.reminderCard}>
-            <View style={styles.reminderLeft}>
-              <View 
-                style={[
-                  styles.statusDot,
-                  { backgroundColor: getStatusColor(reminder.status) },
-                ]}
-              />
-              <View>
-                <Text style={styles.reminderTitle}>{reminder.title}</Text>
-                <Text style={styles.reminderTime}>{reminder.time}</Text>
-              </View>
-            </View>
-            <View style={styles.reminderRight}>
-              <Text style={styles.assignedTo}>
-                {reminder.assignedTo}
-              </Text>
-              <MaterialIcons name="chevron-right" size={24} color="#6b7280" />
-            </View>
-          </TouchableOpacity>
-        ))}
-
-        <TouchableOpacity style={styles.createButton}>
-          <MaterialIcons name="add" size={24} color="#fff" />
-          <Text style={styles.createButtonText}>Create Shared Reminder</Text>
-        </TouchableOpacity>
+      </Modal>
       </View>
-    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1f2937',
-  },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  groupsContainer: {
-    paddingLeft: 20,
-    marginBottom: 24,
-  },
-  groupCard: {
-    padding: 16,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 12,
-    marginRight: 12,
-    width: 160,
-  },
-  selectedGroupCard: {
-    backgroundColor: '#6366f1',
-  },
-  groupName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 12,
-  },
-  selectedGroupName: {
-    color: '#fff',
-  },
-  avatarStack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#e5e7eb',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  avatarText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  content: {
+  reminderList: {
     flex: 1,
-    padding: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
-  },
-  addMemberButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  addMemberText: {
-    fontSize: 14,
-    color: '#6366f1',
-  },
-  membersContainer: {
-    marginBottom: 24,
-  },
-  memberCard: {
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  memberAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  memberAvatarText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  memberName: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  seeAll: {
-    fontSize: 14,
-    color: '#6366f1',
+    padding: 16,
   },
   reminderCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#f9fafb',
+    backgroundColor: Colors.white,
     borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  reminderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 12,
   },
-  reminderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 12,
+  reminderInfo: {
+    marginLeft: 12,
+    flex: 1,
   },
   reminderTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#1f2937',
+    color: Colors.text,
     marginBottom: 4,
   },
-  reminderTime: {
-    fontSize: 14,
-    color: '#6b7280',
+  completedText: {
+    textDecorationLine: 'line-through',
+    color: Colors.gray,
   },
-  reminderRight: {
+  reminderDateTime: {
+    fontSize: 14,
+    color: Colors.gray,
+  },
+  membersContainer: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingTop: 12,
+  },
+  membersTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  memberItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingVertical: 8,
   },
-  assignedTo: {
-    fontSize: 14,
-    color: '#6366f1',
-  },
-  createButton: {
+  memberInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  memberAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
-    backgroundColor: '#6366f1',
+    alignItems: 'center',
+  },
+  memberInitial: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  memberDetails: {
+    marginLeft: 12,
+  },
+  memberEmail: {
+    fontSize: 14,
+    color: Colors.text,
+  },
+  memberRole: {
+    fontSize: 12,
+    color: Colors.gray,
+    textTransform: 'capitalize',
+  },
+  removeButton: {
+    padding: 4,
+  },
+  addMemberButton: {
+    backgroundColor: Colors.primary,
     padding: 16,
     borderRadius: 12,
-    marginTop: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
   },
-  createButtonText: {
-    color: '#fff',
+  addMemberText: {
+    color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.text,
+  },
+  input: {
+    width: '100%',
+    height: 50,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    marginBottom: 20,
+    backgroundColor: Colors.white,
+    color: Colors.text,
+  },
+  roleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  roleButton: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginHorizontal: 5,
+    alignItems: 'center',
+  },
+  roleButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  roleText: {
+    color: Colors.text,
+  },
+  roleTextActive: {
+    color: Colors.white,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modalButton: {
+    flex: 1,
+    backgroundColor: Colors.primary,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  cancelButton: {
+    backgroundColor: Colors.gray,
+  },
+  cancelButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+  },
+  addMemberButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  modalButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
 }); 

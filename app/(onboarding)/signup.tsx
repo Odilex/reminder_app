@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useState } from 'react';
+import Colors from '@/constants/Colors';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -19,20 +20,22 @@ export default function SignupScreen() {
 
       <View style={styles.form}>
         <View style={styles.inputContainer}>
-          <MaterialIcons name="person" size={20} color="#6b7280" style={styles.inputIcon} />
+          <MaterialIcons name="person" size={20} color={Colors.gray} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
             placeholder="Full Name"
+            placeholderTextColor="rgba(107, 114, 128, 0.8)"
             value={name}
             onChangeText={setName}
           />
         </View>
 
         <View style={styles.inputContainer}>
-          <MaterialIcons name="email" size={20} color="#6b7280" style={styles.inputIcon} />
+          <MaterialIcons name="email" size={20} color={Colors.gray} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
             placeholder="Email"
+            placeholderTextColor="rgba(107, 114, 128, 0.8)"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -41,10 +44,11 @@ export default function SignupScreen() {
         </View>
 
         <View style={styles.inputContainer}>
-          <MaterialIcons name="lock" size={20} color="#6b7280" style={styles.inputIcon} />
+          <MaterialIcons name="lock" size={20} color={Colors.gray} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
             placeholder="Password"
+            placeholderTextColor="rgba(107, 114, 128, 0.8)"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -52,10 +56,11 @@ export default function SignupScreen() {
         </View>
 
         <View style={styles.inputContainer}>
-          <MaterialIcons name="lock" size={20} color="#6b7280" style={styles.inputIcon} />
+          <MaterialIcons name="lock" size={20} color={Colors.gray} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
             placeholder="Confirm Password"
+            placeholderTextColor="rgba(107, 114, 128, 0.8)"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry
@@ -76,11 +81,13 @@ export default function SignupScreen() {
         </View>
 
         <View style={styles.socialButtons}>
-          <TouchableOpacity style={styles.socialButton}>
-            <MaterialIcons name="android" size={24} color="#1f2937" />
+          <TouchableOpacity style={[styles.socialButton, styles.googleButton]}>
+            <MaterialIcons name="mail-outline" size={24} color="#DB4437" />
+            <Text style={styles.socialButtonText}>Continue with Google</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButton}>
-            <MaterialIcons name="apple" size={24} color="#1f2937" />
+          <TouchableOpacity style={[styles.socialButton, styles.appleButton]}>
+            <MaterialIcons name="apple" size={24} color="#000000" />
+            <Text style={styles.socialButtonText}>Continue with Apple</Text>
           </TouchableOpacity>
         </View>
 
@@ -100,7 +107,7 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.background,
   },
   contentContainer: {
     padding: 20,
@@ -112,12 +119,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: Colors.text,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6b7280',
-    marginTop: 8,
+    color: Colors.gray,
   },
   form: {
     flex: 1,
@@ -126,11 +133,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: Colors.border,
     borderRadius: 12,
     paddingHorizontal: 16,
     marginBottom: 16,
     height: 56,
+    backgroundColor: Colors.white,
+    shadowColor: Colors.text,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   inputIcon: {
     marginRight: 12,
@@ -138,17 +154,25 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#1f2937',
+    color: Colors.text,
   },
   signupButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: Colors.primary,
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   signupButtonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 18,
     fontWeight: '600',
   },
@@ -160,25 +184,44 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: Colors.border,
   },
   dividerText: {
-    color: '#6b7280',
+    color: Colors.gray,
     paddingHorizontal: 16,
   },
   socialButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
+    gap: 16,
   },
   socialButton: {
-    width: 56,
-    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: Colors.border,
+    backgroundColor: Colors.white,
+    shadowColor: Colors.text,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  googleButton: {
+    borderColor: '#DB4437',
+  },
+  appleButton: {
+    borderColor: '#000000',
+  },
+  socialButtonText: {
+    marginLeft: 12,
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.text,
   },
   loginButton: {
     marginTop: 30,
@@ -186,11 +229,11 @@ const styles = StyleSheet.create({
   },
   loginText: {
     textAlign: 'center',
-    color: '#6b7280',
+    color: Colors.gray,
     fontSize: 14,
   },
   loginLink: {
-    color: '#6366f1',
+    color: Colors.primary,
     fontWeight: '600',
   },
 }); 

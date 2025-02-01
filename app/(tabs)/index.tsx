@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Animated, Platform, ActivityIndicator, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Animated, Platform, ActivityIndicator, Pressable, Modal } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
 import { useState, useMemo, useRef, useEffect } from 'react';
@@ -6,6 +6,7 @@ import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler'
 import * as Progress from 'react-native-progress';
 import * as Speech from 'expo-speech';
 import * as Location from 'expo-location';
+import Colors from '@/constants/Colors';
 
 type Category = {
   name: string;
@@ -53,6 +54,20 @@ interface VoiceRecognitionOptions {
   onEnd: () => void;
 }
 
+type Notification = {
+  id: number;
+  title: string;
+  message: string;
+  time: string;
+  isRead: boolean;
+};
+
+type QuickAction = {
+  icon: keyof typeof MaterialIcons.glyphMap;
+  label: string;
+  route: '/add' | '/shared' | '/memory' | '/profile';
+};
+
 const categories: Category[] = [
   { name: 'All', icon: 'list', count: 12 },
   { name: 'Work', icon: 'work', count: 5 },
@@ -61,11 +76,11 @@ const categories: Category[] = [
   { name: 'Health', icon: 'favorite', count: 1 },
 ];
 
-const quickActions = [
-  { icon: 'alarm-add', label: 'Quick Reminder' },
-  { icon: 'repeat', label: 'Recurring' },
-  { icon: 'group-add', label: 'Share' },
-  { icon: 'location-on', label: 'Location' },
+const quickActions: QuickAction[] = [
+  { icon: 'add-circle', label: 'Add Reminder', route: '/add' },
+  { icon: 'group', label: 'Share', route: '/shared' },
+  { icon: 'history', label: 'Memory', route: '/memory' },
+  { icon: 'person', label: 'Profile', route: '/profile' },
 ];
 
 const aiSuggestions: AISuggestion[] = [
@@ -122,6 +137,24 @@ export default function HomeScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const categoryScrollAnim = useRef(new Animated.Value(0)).current;
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications] = useState<Notification[]>([
+    {
+      id: 1,
+      title: 'Team Meeting',
+      message: 'Reminder: Team meeting in 30 minutes',
+      time: '10 min ago',
+      isRead: false,
+    },
+    {
+      id: 2,
+      title: 'Task Completed',
+      message: 'Great job! You completed all your tasks for today',
+      time: '1 hour ago',
+      isRead: true,
+    },
+  ]);
+  const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -229,9 +262,9 @@ export default function HomeScreen() {
 
   const greeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
+    if (hour < 12) return 'Good Morning, Lumion';
+    if (hour < 18) return 'Good Afternoon, Lumion';
+    return 'Good Evening, Lumion';
   };
 
   const getPriorityColor = (priority: Priority) => {
@@ -281,32 +314,37 @@ export default function HomeScreen() {
     ]).start();
   };
 
-  const renderQuickAction = (action: typeof quickActions[0], index: number) => {
-    const scale = new Animated.Value(1);
-    
+  const renderQuickAction = (action: QuickAction, index: number) => {
     return (
-      <Pressable 
-        key={index}
-        onPress={() => animatePress(scale)}
-        style={({ pressed }) => [
-          styles.quickActionButton,
-          pressed && { opacity: 0.8 }
-        ]}
+      <Link
+        href={action.route}
+        key={action.label}
+        asChild
       >
-        <Animated.View 
+        <TouchableOpacity
           style={[
-            styles.quickActionIcon,
-            { transform: [{ scale }] }
+            styles.quickAction,
+            { backgroundColor: Colors.card }
           ]}
+          onPress={() => {
+            Animated.sequence([
+              Animated.timing(scaleAnim, {
+                toValue: 0.95,
+                duration: 100,
+                useNativeDriver: true,
+              }),
+              Animated.timing(scaleAnim, {
+                toValue: 1,
+                duration: 100,
+                useNativeDriver: true,
+              }),
+            ]).start();
+          }}
         >
-          <MaterialIcons 
-            name={action.icon as keyof typeof MaterialIcons.glyphMap} 
-            size={24} 
-            color="#6366f1" 
-          />
-        </Animated.View>
-        <Text style={styles.quickActionLabel}>{action.label}</Text>
-      </Pressable>
+          <MaterialIcons name={action.icon} size={24} color={Colors.primary} />
+          <Text style={styles.quickActionLabel}>{action.label}</Text>
+        </TouchableOpacity>
+      </Link>
     );
   };
 
@@ -436,16 +474,23 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>{greeting()}</Text>
             <Text style={styles.name}>Alex</Text>
           </View>
-          <TouchableOpacity style={styles.profileButton}>
-            <MaterialIcons name="notifications" size={24} color="#1f2937" />
-            <View style={styles.badge} />
-          </TouchableOpacity>
-          {weather && (
-            <View style={styles.weatherContainer}>
-              <MaterialIcons name={weather.icon as keyof typeof MaterialIcons.glyphMap} size={24} color="#1f2937" />
-              <Text style={styles.temperature}>{weather.temp}°F</Text>
-            </View>
-          )}
+          
+          <View style={styles.headerRight}>
+            {weather && (
+              <View style={styles.weatherContainer}>
+                <MaterialIcons name={weather.icon} size={24} color="#1f2937" />
+                <Text style={styles.temperature}>{weather.temp}°F</Text>
+              </View>
+            )}
+            
+            <TouchableOpacity 
+              style={styles.notificationButton}
+              onPress={() => setShowNotifications(true)}
+            >
+              <MaterialIcons name="notifications" size={24} color="#1f2937" />
+              <View style={styles.badge} />
+            </TouchableOpacity>
+          </View>
         </Animated.View>
 
         <View style={styles.progressContainer}>
@@ -570,7 +615,10 @@ export default function HomeScreen() {
                       renderRightActions(progress, dragX, reminder)
                     }
                   >
-                    <TouchableOpacity style={styles.reminderCard}>
+                    <TouchableOpacity 
+                      style={styles.reminderCard}
+                      onPress={() => setSelectedReminder(reminder)}
+                    >
                       <View style={styles.reminderLeft}>
                         <View 
                           style={[
@@ -602,10 +650,144 @@ export default function HomeScreen() {
               pressed && { transform: [{ scale: 0.98 }], opacity: 0.9 }
             ]}
           >
-            <MaterialIcons name="add" size={24} color="#fff" />
+            <MaterialIcons name="add" size={24} color={Colors.white} />
             <Text style={styles.addButtonText}>Add New Reminder</Text>
           </Pressable>
         </Link>
+
+        {/* Notification Modal */}
+        <Modal
+          visible={showNotifications}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowNotifications(false)}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setShowNotifications(false)}
+          >
+            <TouchableOpacity 
+              activeOpacity={1} 
+              onPress={e => e.stopPropagation()}
+              style={styles.modalContent}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Notifications</Text>
+                <TouchableOpacity onPress={() => setShowNotifications(false)}>
+                  <MaterialIcons name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.notificationList}>
+                {notifications.map((notification) => (
+                  <View 
+                    key={notification.id} 
+                    style={[
+                      styles.notificationItem,
+                      !notification.isRead && styles.unreadNotification
+                    ]}
+                  >
+                    <View style={styles.notificationContent}>
+                      <Text style={styles.notificationTitle}>{notification.title}</Text>
+                      <Text style={styles.notificationMessage}>{notification.message}</Text>
+                      <Text style={styles.notificationTime}>{notification.time}</Text>
+                    </View>
+                    {!notification.isRead && <View style={styles.unreadDot} />}
+                  </View>
+                ))}
+              </ScrollView>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
+        <Modal
+          visible={!!selectedReminder}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setSelectedReminder(null)}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setSelectedReminder(null)}
+          >
+            <TouchableOpacity 
+              activeOpacity={1} 
+              onPress={e => e.stopPropagation()}
+              style={[styles.modalContent, { padding: 20 }]}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Reminder Details</Text>
+                <TouchableOpacity onPress={() => setSelectedReminder(null)}>
+                  <MaterialIcons name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+              
+              {selectedReminder && (
+                <View style={styles.reminderDetails}>
+                  <View style={styles.reminderDetailRow}>
+                    <MaterialIcons name="event" size={24} color={Colors.primary} />
+                    <View style={styles.reminderDetailText}>
+                      <Text style={styles.reminderDetailLabel}>Title</Text>
+                      <Text style={styles.reminderDetailValue}>{selectedReminder.title}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.reminderDetailRow}>
+                    <MaterialIcons name="access-time" size={24} color={Colors.primary} />
+                    <View style={styles.reminderDetailText}>
+                      <Text style={styles.reminderDetailLabel}>Time</Text>
+                      <Text style={styles.reminderDetailValue}>{selectedReminder.time}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.reminderDetailRow}>
+                    <MaterialIcons name="category" size={24} color={Colors.primary} />
+                    <View style={styles.reminderDetailText}>
+                      <Text style={styles.reminderDetailLabel}>Category</Text>
+                      <Text style={styles.reminderDetailValue}>{selectedReminder.category}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.reminderDetailRow}>
+                    <MaterialIcons name="flag" size={24} color={getPriorityColor(selectedReminder.priority)} />
+                    <View style={styles.reminderDetailText}>
+                      <Text style={styles.reminderDetailLabel}>Priority</Text>
+                      <Text style={[styles.reminderDetailValue, { color: getPriorityColor(selectedReminder.priority) }]}>
+                        {selectedReminder.priority.charAt(0).toUpperCase() + selectedReminder.priority.slice(1)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.reminderActions}>
+                    <TouchableOpacity 
+                      style={[styles.reminderActionButton, { backgroundColor: Colors.primary }]}
+                      onPress={() => {
+                        // Handle edit action
+                        setSelectedReminder(null);
+                      }}
+                    >
+                      <MaterialIcons name="edit" size={20} color={Colors.white} />
+                      <Text style={styles.reminderActionText}>Edit</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={[styles.reminderActionButton, { backgroundColor: Colors.error }]}
+                      onPress={() => {
+                        // Handle delete action
+                        setSelectedReminder(null);
+                      }}
+                    >
+                      <MaterialIcons name="delete" size={20} color={Colors.white} />
+                      <Text style={styles.reminderActionText}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
       </Animated.ScrollView>
     </GestureHandlerRootView>
   );
@@ -633,7 +815,12 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     marginTop: 4,
   },
-  profileButton: {
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  notificationButton: {
     position: 'relative',
     width: 40,
     height: 40,
@@ -673,27 +860,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 24,
   },
-  quickActionButton: {
+  quickAction: {
     alignItems: 'center',
     padding: 8,
     borderRadius: 12,
-  },
-  quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
   },
   quickActionLabel: {
     fontSize: 12,
@@ -828,25 +998,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#6366f1',
-    margin: 20,
+    backgroundColor: '#000000',
+    marginHorizontal: 20,
+    marginBottom: 100,
     padding: 16,
-    borderRadius: 12,
-    marginBottom: 40,
+    borderRadius: 25,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 6,
     },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 12,
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    zIndex: 999,
+    minHeight: 56,
   },
   addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
+    color: Colors.white,
+    fontSize: 18,
+    fontWeight: '700',
+    marginLeft: 12,
+    letterSpacing: 0.5,
   },
   weatherContainer: {
     flexDirection: 'row',
@@ -951,5 +1128,113 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     fontSize: 14,
     flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.text,
+  },
+  notificationList: {
+    padding: 20,
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  unreadNotification: {
+    backgroundColor: '#f3f4f6',
+  },
+  notificationContent: {
+    flex: 1,
+  },
+  notificationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  notificationMessage: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  notificationTime: {
+    fontSize: 12,
+    color: '#9ca3af',
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#6366f1',
+    marginLeft: 12,
+  },
+  reminderDetails: {
+    paddingTop: 20,
+  },
+  reminderDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  reminderDetailText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  reminderDetailLabel: {
+    fontSize: 12,
+    color: Colors.gray,
+    marginBottom: 4,
+  },
+  reminderDetailValue: {
+    fontSize: 16,
+    color: Colors.text,
+    fontWeight: '600',
+  },
+  reminderActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  reminderActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
+    flex: 0.48,
+  },
+  reminderActionText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });
