@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -61,7 +61,7 @@ export default function LoginScreen() {
 
         <View style={styles.socialButtons}>
           <TouchableOpacity style={[styles.socialButton, styles.googleButton]}>
-            <MaterialIcons name="mail-outline" size={24} color="#DB4437" />
+            <MaterialIcons name="mail" size={24} color="#000000" />
             <Text style={styles.socialButtonText}>Continue with Google</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.socialButton, styles.appleButton]}>
@@ -181,8 +181,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 16,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderWidth: 2,
+    borderColor: '#000000',
     backgroundColor: Colors.white,
     shadowColor: Colors.text,
     shadowOffset: {
@@ -194,11 +194,10 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   googleButton: {
-    borderColor: '#DB4437',
+    borderColor: '#000000',
   },
   appleButton: {
     borderColor: '#000000',
-    backgroundColor: Colors.white,
   },
   socialButtonText: {
     marginLeft: 12,
@@ -218,5 +217,16 @@ const styles = StyleSheet.create({
   signupLink: {
     color: Colors.primary,
     fontWeight: '600',
+  },
+  googleIconContainer: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+    resizeMode: 'contain',
   },
 }); 

@@ -1,10 +1,12 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import Colors from '@/constants/Colors';
+import { ThemeContext } from '../../context/ThemeContext';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
+  const { isDarkMode } = useContext(ThemeContext);
 
   const handleResetPassword = () => {
     // Implement password reset logic here
@@ -12,15 +14,32 @@ export default function ForgotPassword() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      isDarkMode && { backgroundColor: Colors.dark.background }
+    ]}>
       <Stack.Screen options={{ title: 'Forgot Password' }} />
       
-      <Text style={styles.title}>Reset Password</Text>
-      <Text style={styles.subtitle}>Enter your email address to reset your password</Text>
+      <Text style={[
+        styles.title,
+        isDarkMode && { color: Colors.dark.text }
+      ]}>Reset Password</Text>
+      <Text style={[
+        styles.subtitle,
+        isDarkMode && { color: Colors.dark.text }
+      ]}>Enter your email address to reset your password</Text>
       
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          isDarkMode && {
+            backgroundColor: Colors.dark.card,
+            borderColor: Colors.dark.border,
+            color: Colors.dark.text
+          }
+        ]}
         placeholder="Enter your email"
+        placeholderTextColor={isDarkMode ? Colors.dark.text : Colors.gray}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"

@@ -181,9 +181,9 @@ export default function SharedReminders() {
                 }}
               >
                 <MaterialIcons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
-            
+          </TouchableOpacity>
+        </View>
+
             <TextInput
               style={styles.input}
               placeholder="Enter email address"
@@ -233,7 +233,7 @@ export default function SharedReminders() {
           </TouchableOpacity>
             </View>
           </View>
-        </View>
+            </View>
       </Modal>
       </View>
   );
