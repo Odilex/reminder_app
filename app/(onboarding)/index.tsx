@@ -60,7 +60,7 @@ export default function OnboardingScreen() {
             if (currentIndex < features.length - 1) {
               setCurrentIndex(currentIndex + 1);
             } else {
-              router.push('/login');
+              router.push('/(auth)/login');
             }
           }}
         >
