@@ -10,17 +10,17 @@ const features = [
   {
     title: 'Smart Reminders',
     description: 'AI-powered reminders that learn from your daily routines',
-    icon: 'notifications-active',
+    icon: 'notifications' as const,
   },
   {
     title: 'Predictive Suggestions',
     description: 'Get intelligent suggestions based on your behavior patterns',
-    icon: 'psychology',
+    icon: 'psychology' as const,
   },
   {
     title: 'Task Management',
     description: 'Organize and track your tasks with ease',
-    icon: 'check-circle',
+    icon: 'check-circle' as const,
   },
 ];
 

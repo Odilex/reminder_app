@@ -58,29 +58,36 @@ export default function AddReminderScreen() {
           <TextInput
             style={styles.input}
             placeholder="Reminder Title"
+            placeholderTextColor="rgba(0, 0, 0, 0.6)"
             value={title}
             onChangeText={setTitle}
           />
         </View>
 
         <TouchableOpacity 
-          style={styles.inputContainer}
+          style={styles.dateTimeButton}
           onPress={() => setShowDatePicker(true)}
         >
-          <MaterialIcons name="calendar-today" size={20} color="#6b7280" style={styles.inputIcon} />
-          <Text style={styles.dateText}>
-            {date.toLocaleDateString()}
-          </Text>
+          <View style={styles.dateTimeContent}>
+            <MaterialIcons name="calendar-today" size={20} color="#6b7280" />
+            <Text style={styles.dateTimeText}>
+              {date.toLocaleDateString()}
+            </Text>
+          </View>
+          <MaterialIcons name="arrow-drop-down" size={24} color="#6b7280" />
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.inputContainer}
+          style={styles.dateTimeButton}
           onPress={() => setShowTimePicker(true)}
         >
-          <MaterialIcons name="access-time" size={20} color="#6b7280" style={styles.inputIcon} />
-          <Text style={styles.dateText}>
-            {date.toLocaleTimeString()}
-          </Text>
+          <View style={styles.dateTimeContent}>
+            <MaterialIcons name="access-time" size={20} color="#6b7280" />
+            <Text style={styles.dateTimeText}>
+              {date.toLocaleTimeString()}
+            </Text>
+          </View>
+          <MaterialIcons name="arrow-drop-down" size={24} color="#6b7280" />
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Category</Text>
@@ -95,7 +102,7 @@ export default function AddReminderScreen() {
               onPress={() => setSelectedCategory(category.id)}
             >
               <MaterialIcons 
-                name={category.icon} 
+                name ={category.icon} 
                 size={20} 
                 color={selectedCategory === category.id ? '#fff' : '#6b7280'} 
               />
@@ -173,6 +180,7 @@ export default function AddReminderScreen() {
         <DateTimePicker
           value={date}
           mode="date"
+          display="spinner"
           onChange={handleDateChange}
         />
       )}
@@ -181,6 +189,7 @@ export default function AddReminderScreen() {
         <DateTimePicker
           value={date}
           mode="time"
+          display="spinner"
           onChange={handleTimeChange}
         />
       )}
@@ -226,10 +235,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1f2937',
   },
-  dateText: {
-    flex: 1,
+  dateTimeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    height: 56,
+    backgroundColor: '#fff',
+  },
+  dateTimeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateTimeText: {
     fontSize: 16,
     color: '#1f2937',
+    marginLeft: 12,
   },
   sectionTitle: {
     fontSize: 16,
