@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { ThemeProvider } from '../context/ThemeContext';
 import { UserProvider } from '../context/UserContext';
+import { LanguageProvider } from '../context/LanguageContext';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -43,37 +44,39 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <UserProvider>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            gestureEnabled: true,
-            animation: 'slide_from_right',
-          }}
-        >
-          <Stack.Screen 
-            name="(onboarding)" 
-            options={{ 
+      <LanguageProvider>
+        <UserProvider>
+          <Stack
+            screenOptions={{
               headerShown: false,
-              gestureEnabled: false,
-            }} 
-          />
-          <Stack.Screen 
-            name="(tabs)" 
-            options={{ 
-              headerShown: false,
-              gestureEnabled: false,
-            }} 
-          />
-          <Stack.Screen 
-            name="modal" 
-            options={{ 
-              presentation: 'modal',
               gestureEnabled: true,
-            }} 
-          />
-        </Stack>
-      </UserProvider>
+              animation: 'slide_from_right',
+            }}
+          >
+            <Stack.Screen 
+              name="(onboarding)" 
+              options={{ 
+                headerShown: false,
+                gestureEnabled: false,
+              }} 
+            />
+            <Stack.Screen 
+              name="(tabs)" 
+              options={{ 
+                headerShown: false,
+                gestureEnabled: false,
+              }} 
+            />
+            <Stack.Screen 
+              name="modal" 
+              options={{ 
+                presentation: 'modal',
+                gestureEnabled: true,
+              }} 
+            />
+          </Stack>
+        </UserProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 }

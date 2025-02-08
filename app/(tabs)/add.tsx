@@ -102,7 +102,7 @@ export default function AddReminderScreen() {
               onPress={() => setSelectedCategory(category.id)}
             >
               <MaterialIcons 
-                name={category.icon} 
+                name ={category.icon} 
                 size={20} 
                 color={selectedCategory === category.id ? '#fff' : '#6b7280'} 
               />

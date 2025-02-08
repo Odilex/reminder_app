@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Modal, TextInput, Linking, Image, ViewStyle } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { MaterialIcons as MaterialIconsType } from '@expo/vector-icons/MaterialIcons';
 import { useState, useContext } from 'react';
@@ -9,6 +9,7 @@ import Colors from '@/constants/Colors';
 import { ThemeContext, useTheme } from '../../context/ThemeContext';
 import { useUser } from '../../context/UserContext';
 import { ComponentProps } from 'react';
+import { useLanguage, languages, Language } from '../../context/LanguageContext';
 
 // Get the correct type for MaterialIcons names
 type IconProps = ComponentProps<typeof MaterialIcons>;
@@ -69,6 +70,8 @@ type SettingItem = {
   title: string;
   hasSwitch?: boolean;
   description?: string;
+  value?: boolean;
+  onValueChange?: (value: boolean) => void;
 };
 
 type SettingSection = {
@@ -167,6 +170,7 @@ export default function ProfileScreen() {
     shared: true,
     suggestions: true,
   });
+  const { language: currentLanguage, setLanguage, t } = useLanguage();
 
   const handleTakePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -222,7 +226,7 @@ export default function ProfileScreen() {
 
   const handleSettingPress = (title: string) => {
     switch (title) {
-      case 'Language':
+      case t('language'):
         setShowLanguageModal(true);
         break;
       case 'Sync Frequency':
@@ -352,6 +356,69 @@ export default function ProfileScreen() {
     } as ViewStyle,
   });
 
+  const renderLanguageModal = () => (
+    <Modal
+      visible={showLanguageModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowLanguageModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, isDarkMode && styles.darkModalContent]}>
+          <View style={styles.modalHeader}>
+            <Text style={[styles.modalTitle, isDarkMode && styles.darkText]}>
+              {t('selectLanguage')}
+            </Text>
+            <TouchableOpacity onPress={() => setShowLanguageModal(false)}>
+              <MaterialIcons 
+                name="close"
+                size={24} 
+                color={isDarkMode ? Colors.white : Colors.text} 
+              />
+            </TouchableOpacity>
+          </View>
+          <ScrollView>
+            {(Object.entries(languages) as [Language, string][]).map(([code, name]) => (
+              <TouchableOpacity
+                key={code}
+                style={[
+                  styles.optionItem,
+                  currentLanguage === code && styles.selectedOption,
+                ]}
+                onPress={() => {
+                  setLanguage(code);
+                  setShowLanguageModal(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.optionText,
+                    currentLanguage === code && styles.selectedOptionText,
+                  ]}
+                >
+                  {name}
+                </Text>
+                {currentLanguage === code && (
+                  <MaterialIcons 
+                    name="check-circle-outline"
+                    size={24} 
+                    color={Colors.primary} 
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <TouchableOpacity
+            style={styles.modalCloseButton}
+            onPress={() => setShowLanguageModal(false)}
+          >
+            <Text style={styles.modalCloseText}>{t('close')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <ScrollView 
       style={[
@@ -360,79 +427,89 @@ export default function ProfileScreen() {
       ]}
       showsVerticalScrollIndicator={false}
     >
-      <View style={[styles.header, headerStyle.dynamic]}>
-        <View style={styles.profileContainer}>
-          <View style={styles.avatarWrapper}>
-            {user?.profileImage ? (
-              <Image source={{ uri: user.profileImage }} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarText}>{user?.name?.[0] || 'L'}</Text>
-        </View>
-            )}
-            <TouchableOpacity 
-              style={styles.editAvatarButton}
-              onPress={handleTakePhoto}
-            >
-              <MaterialIcons 
-                name={VALID_ICONS.camera} 
-                size={16} 
-                color={Colors.white} 
-              />
-            </TouchableOpacity>
-        </View>
-          <Text style={[styles.profileName, isDarkMode && styles.darkText]}>{user?.name}</Text>
-          <Text style={styles.profileEmail}>{user?.email}</Text>
-          <TouchableOpacity style={styles.editProfileButton}>
-            <Text style={styles.editProfileText}>Edit Profile</Text>
-          </TouchableOpacity>
+      <View style={[styles.header, { backgroundColor: theme.card }]}>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>
+          {t('profile')}
+        </Text>
+      </View>
+
+      <View style={styles.profileSection}>
+        <View style={[styles.profileImageContainer, { backgroundColor: theme.card }]}>
+          {user?.profileImage ? (
+            <Image source={{ uri: user.profileImage }} style={styles.profileImage} />
+          ) : (
+            <View style={[styles.profileImagePlaceholder, { backgroundColor: Colors.primary }]}>
+              <Text style={styles.profileImageText}>
+                {user?.name ? user.name[0].toUpperCase() : 'U'}
+              </Text>
+            </View>
+          )}
+          <View style={styles.profileInfo}>
+            <Text style={[styles.profileName, { color: theme.text }]}>
+              {user?.name || 'User'}
+            </Text>
+            <Text style={[styles.profileEmail, { color: theme.text }]}>
+              {user?.email || 'user@example.com'}
+            </Text>
+          </View>
         </View>
       </View>
 
       {settingsSections.map((section, sectionIndex) => (
-        <View key={section.title} style={styles.section}>
-          <Text style={[styles.sectionTitle, isDarkMode && styles.darkText]}>
+        <View 
+          key={section.title} 
+          style={[
+            styles.section,
+            { backgroundColor: theme.card }
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
             {section.title}
           </Text>
+          
           {section.items.map((item, itemIndex) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               key={item.title}
               style={[
                 styles.settingItem,
-                itemIndex === section.items.length - 1 && styles.lastSettingItem,
-                { backgroundColor: isDarkMode ? Colors.dark.card : Colors.white }
+                itemIndex < section.items.length - 1 && styles.settingItemBorder,
+                { borderBottomColor: theme.border }
               ]}
               onPress={() => handleSettingPress(item.title)}
             >
-              <View style={styles.settingLeft}>
-                <View style={[
-                  styles.iconWrapper,
-                  { backgroundColor: isDarkMode ? Colors.dark.background : Colors.light.card }
-                ]}>
-                  <MaterialIcons 
-                    name={item.icon}
-                    size={22} 
-                    color={isDarkMode ? Colors.white : Colors.text} 
-                  />
-                </View>
-                <View>
-                  <Text style={[styles.settingTitle, isDarkMode && styles.darkText]}>
+              <View style={styles.settingItemLeft}>
+                <MaterialIcons 
+                  name={item.icon} 
+                  size={24} 
+                  color={theme === Colors.dark ? Colors.dark.primary : Colors.primary} 
+                />
+                <View style={styles.settingItemContent}>
+                  <Text style={[styles.settingItemTitle, { color: theme.text }]}>
                     {item.title}
                   </Text>
                   {item.description && (
-                    <Text style={styles.settingDescription}>
+                    <Text style={[styles.settingItemDescription, { color: theme.text }]}>
                       {item.description}
                     </Text>
                   )}
                 </View>
               </View>
+              
               {item.hasSwitch ? (
-                getToggleForSetting(item.title)
+                <Switch
+                  value={item.value !== undefined ? item.value : false}
+                  onValueChange={item.onValueChange || (() => {})}
+                  trackColor={{ 
+                    false: theme === Colors.dark ? '#4a4a4a' : '#e5e7eb',
+                    true: Colors.primary 
+                  }}
+                  thumbColor={Colors.white}
+                />
               ) : (
                 <MaterialIcons 
-                  name="chevron-right"
-                  size={20} 
-                  color={isDarkMode ? Colors.white : Colors.text} 
+                  name="chevron-right" 
+                  size={24} 
+                  color={theme.text} 
                 />
               )}
             </TouchableOpacity>
@@ -930,6 +1007,8 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {renderLanguageModal()}
     </ScrollView>
   );
 }
@@ -937,128 +1016,90 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.light.background,
   },
   header: {
     paddingTop: 60,
-    paddingBottom: 24,
-  } as ViewStyle,
-  profileContainer: {
-    alignItems: 'center',
+    paddingBottom: 20,
     paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  avatarWrapper: {
-    position: 'relative',
-    marginBottom: 16,
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
   },
-  avatarImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: Colors.gray,
+  profileSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: Colors.primary,
+  profileImageContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    padding: 20,
+    borderRadius: 12,
   },
-  avatarText: {
-    fontSize: 40,
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  profileImagePlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileImageText: {
+    fontSize: 32,
     color: Colors.white,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
-  editAvatarButton: {
-    position: 'absolute',
-    right: -4,
-    bottom: -4,
-    backgroundColor: Colors.primary,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: Colors.light.background,
+  profileInfo: {
+    marginLeft: 20,
   },
   profileName: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: Colors.text,
+    fontSize: 20,
+    fontWeight: 'bold',
     marginBottom: 4,
   },
   profileEmail: {
     fontSize: 14,
-    color: Colors.gray,
-    marginBottom: 16,
-  },
-  editProfileButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    backgroundColor: Colors.primary,
-    borderRadius: 20,
-  },
-  editProfileText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: '500',
   },
   section: {
-    marginTop: 24,
-    paddingHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginHorizontal: 20,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 12,
+    padding: 16,
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-    backgroundColor: Colors.white,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    padding: 16,
   },
-  settingLeft: {
+  settingItemBorder: {
+    borderBottomWidth: 1,
+  },
+  settingItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  iconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.light.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
+  settingItemContent: {
+    marginLeft: 16,
+    flex: 1,
   },
-  settingTitle: {
+  settingItemTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
     marginBottom: 4,
   },
-  settingDescription: {
-    fontSize: 12,
-    color: Colors.gray,
-  },
-  lastSettingItem: {
-    borderBottomWidth: 0,
+  settingItemDescription: {
+    fontSize: 14,
   },
   logoutButton: {
     flexDirection: 'row',
@@ -1086,10 +1127,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: Colors.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingTop: 20,
     maxHeight: '80%',
   },
   darkModalContent: {
@@ -1099,28 +1138,74 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.text,
   },
-  contactItem: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+  modalBody: {
+    padding: 20,
   },
-  contactButton: {
+  optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
-  contactText: {
+  selectedOption: {
+    backgroundColor: Colors.primary + '10',
+  },
+  optionText: {
     fontSize: 16,
     color: Colors.text,
+  },
+  selectedOptionText: {
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  modalCloseButton: {
+    backgroundColor: Colors.primary,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 16,
+    marginHorizontal: 20,
+  },
+  modalCloseText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  preferenceSection: {
+    gap: 20,
+  },
+  preferenceItem: {
+    backgroundColor: Colors.white,
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  preferenceTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 4,
+  },
+  preferenceDescription: {
+    fontSize: 14,
+    color: Colors.gray,
+    marginBottom: 12,
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -1197,66 +1282,21 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.5,
   },
-  optionItem: {
+  languageOption: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    alignItems: 'center',
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
   },
-  selectedOption: {
+  selectedLanguageOption: {
     backgroundColor: Colors.primary + '10',
   },
-  optionText: {
+  languageText: {
     fontSize: 16,
-    color: Colors.text,
   },
-  selectedOptionText: {
+  selectedLanguageText: {
     color: Colors.primary,
     fontWeight: '600',
-  },
-  modalCloseButton: {
-    backgroundColor: Colors.primary,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 16,
-    marginHorizontal: 20,
-  },
-  modalCloseText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalBody: {
-    padding: 20,
-  },
-  preferenceSection: {
-    gap: 20,
-  },
-  preferenceItem: {
-    backgroundColor: Colors.white,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  preferenceTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  preferenceDescription: {
-    fontSize: 14,
-    color: Colors.gray,
-    marginBottom: 12,
   },
 }); 
