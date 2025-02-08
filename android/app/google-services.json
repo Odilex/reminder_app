@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "361431872463",
+    "project_id": "reminder-app-fbdec",
+    "storage_bucket": "reminder-app-fbdec.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:361431872463:web:14cbd17c0e1e2288d258ba",
+        "android_client_info": {
+          "package_name": "com.reminder_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAucSCTqMR-t0lX8HX3kMOVR1mACbWdA4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+} 
