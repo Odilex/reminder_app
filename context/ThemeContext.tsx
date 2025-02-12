@@ -19,7 +19,7 @@ export const ThemeContext = createContext<ThemeContextType>({
 
 const THEME_STORAGE_KEY = '@theme_mode';
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+export function ThemeProvider({ children }: { children: React.ReactNode }): JSX.Element {
   const systemColorScheme = useColorScheme();
   const [isDarkMode, setIsDarkMode] = useState(systemColorScheme === 'dark');
 
@@ -41,7 +41,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     loadTheme();
   }, [systemColorScheme]);
 
-  const toggleTheme = async () => {
+  const toggleTheme = async (): Promise<void> => {
     try {
       const newMode = !isDarkMode;
       setIsDarkMode(newMode);
@@ -53,18 +53,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const theme = isDarkMode ? Colors.dark : Colors.light;
 
-  const getThemedColor = (colorName: keyof typeof Colors.light | keyof typeof Colors.dark) => {
+  const getThemedColor = (colorName: keyof typeof Colors.light | keyof typeof Colors.dark): string => {
     if (colorName in theme) {
-      return theme[colorName];
+      return theme[colorName] as string;
     }
     // Fallback to base colors if not found in theme
     if (colorName in Colors) {
-      return Colors[colorName as keyof typeof Colors];
+      return Colors[colorName as keyof typeof Colors] as string;
     }
     return isDarkMode ? Colors.dark.text : Colors.light.text;
   };
 
-  const value = {
+  const value: ThemeContextType = {
     isDarkMode,
     toggleTheme,
     theme,
@@ -79,10 +79,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 // Custom hook for using theme
-export function useTheme() {
+export function useTheme(): ThemeContextType {
   const context = useContext(ThemeContext);
   if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    throw new Error('useTheme hook must be used within a ThemeProvider component');
   }
   return context;
 } 
