@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import winston from 'winston';
 import { connectMongoose } from './config/database.js';
+import { cacheService } from './services/cache.js';
 
 // Routes
 import authRoutes from './routes/auth.js';
@@ -16,7 +17,6 @@ import sharedRoutes from './routes/shared.js';
 import aiRoutes from './routes/ai.js';
 
 // Services
-import { cacheService } from './services/cache.js';
 import { schedulerService } from './services/scheduler.js';
 import './config/firebase.js';
 
@@ -94,8 +94,7 @@ const initializeApp = async () => {
         timestamp: new Date(),
         services: {
           mongodb: mongoose.connection.readyState === 1,
-          redis: cacheService.client.isReady,
-          scheduler: true
+          redis: cacheService.client.isOpen
         }
       });
     });
@@ -118,9 +117,35 @@ const initializeApp = async () => {
 
     // Start server
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
     });
+
+    // Graceful shutdown
+    const shutdown = async () => {
+      logger.info('Shutting down gracefully...');
+      
+      server.close(async () => {
+        logger.info('HTTP server closed');
+        
+        try {
+          await mongoose.connection.close();
+          logger.info('MongoDB connection closed');
+          
+          await cacheService.disconnect();
+          logger.info('Redis connection closed');
+          
+          process.exit(0);
+        } catch (error) {
+          logger.error('Error during shutdown:', error);
+          process.exit(1);
+        }
+      });
+    };
+
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
+
   } catch (error) {
     logger.error('Application initialization error:', error);
     process.exit(1);

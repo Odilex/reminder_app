@@ -1,29 +1,61 @@
 import { createClient } from 'redis';
-import { promisify } from 'util';
 
 class CacheService {
   constructor() {
+    this.memoryCache = new Map();
+    this.isRedisAvailable = false;
+    
     this.client = createClient({
-      url: process.env.REDIS_URL || 'redis://localhost:6379'
+      url: process.env.REDIS_URL,
+      socket: {
+        tls: true,
+        rejectUnauthorized: false
+      }
     });
 
-    this.client.on('error', (err) => console.error('Redis Client Error:', err));
-    this.client.on('connect', () => console.log('Connected to Redis'));
+    this.client.on('error', (err) => {
+      console.error('Redis Client Error:', err);
+      this.isRedisAvailable = false;
+    });
+    
+    this.client.on('connect', () => {
+      console.log('Connected to Redis Cloud');
+      this.isRedisAvailable = true;
+    });
 
-    // Promisify Redis commands
-    this.getAsync = promisify(this.client.get).bind(this.client);
-    this.setAsync = promisify(this.client.set).bind(this.client);
-    this.delAsync = promisify(this.client.del).bind(this.client);
+    this.client.on('reconnecting', () => {
+      console.log('Reconnecting to Redis Cloud...');
+    });
   }
 
   async connect() {
-    await this.client.connect();
+    try {
+      if (!this.client.isOpen) {
+        await this.client.connect();
+        this.isRedisAvailable = true;
+      }
+    } catch (error) {
+      console.error('Redis connection error:', error);
+      this.isRedisAvailable = false;
+      console.log('Falling back to in-memory cache');
+    }
+  }
+
+  async disconnect() {
+    if (this.isRedisAvailable && this.client.isOpen) {
+      await this.client.quit();
+    }
   }
 
   async get(key) {
     try {
-      const data = await this.getAsync(key);
-      return data ? JSON.parse(data) : null;
+      if (this.isRedisAvailable) {
+        const data = await this.client.get(key);
+        return data ? JSON.parse(data) : null;
+      } else {
+        const data = this.memoryCache.get(key);
+        return data ? JSON.parse(data) : null;
+      }
     } catch (error) {
       console.error('Cache get error:', error);
       return null;
@@ -32,7 +64,18 @@ class CacheService {
 
   async set(key, value, expirationInSeconds = 3600) {
     try {
-      await this.setAsync(key, JSON.stringify(value), 'EX', expirationInSeconds);
+      const stringValue = JSON.stringify(value);
+      if (this.isRedisAvailable) {
+        await this.client.set(key, stringValue, {
+          EX: expirationInSeconds
+        });
+      } else {
+        this.memoryCache.set(key, stringValue);
+        // Simple expiration for memory cache
+        setTimeout(() => {
+          this.memoryCache.delete(key);
+        }, expirationInSeconds * 1000);
+      }
       return true;
     } catch (error) {
       console.error('Cache set error:', error);
@@ -42,7 +85,11 @@ class CacheService {
 
   async del(key) {
     try {
-      await this.delAsync(key);
+      if (this.isRedisAvailable) {
+        await this.client.del(key);
+      } else {
+        this.memoryCache.delete(key);
+      }
       return true;
     } catch (error) {
       console.error('Cache delete error:', error);

@@ -69,7 +69,7 @@ export const commonValidations = {
   },
   category: {
     isIn: {
-      options: [['Work', 'Personal', 'Shopping', 'Health']],
+      options: [['work', 'personal', 'shopping', 'health', 'other']],
       errorMessage: 'Invalid category'
     }
   },

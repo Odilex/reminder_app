@@ -5,8 +5,6 @@ import { MongoClient, ServerApiVersion } from 'mongodb';
 export const connectMongoose = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       serverApi: {
         version: ServerApiVersion.v1,
         strict: true,
