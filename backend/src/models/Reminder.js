@@ -100,7 +100,6 @@ const reminderSchema = new mongoose.Schema({
 // Indexes
 reminderSchema.index({ user: 1, date: 1 });
 reminderSchema.index({ user: 1, category: 1 });
-reminderSchema.index({ firebaseId: 1 }, { sparse: true });
 reminderSchema.index({ 'location.coordinates': '2dsphere' });
 
 // Methods

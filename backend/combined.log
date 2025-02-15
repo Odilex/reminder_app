@@ -40,3 +40,7 @@
 {"level":"info","message":"Connected to MongoDB","timestamp":"2025-02-15T16:48:22.865Z"}
 {"level":"info","message":"Server running on port 5000","timestamp":"2025-02-15T16:48:22.876Z"}
 {"level":"info","message":"Connected to MongoDB","timestamp":"2025-02-15T16:48:46.862Z"}
+{"level":"info","message":"Connected to MongoDB","timestamp":"2025-02-15T16:55:18.755Z"}
+{"level":"info","message":"Server running on port 5000","timestamp":"2025-02-15T16:55:18.768Z"}
+{"level":"info","message":"Connected to MongoDB","timestamp":"2025-02-15T16:55:18.892Z"}
+{"level":"info","message":"Shutting down gracefully...","timestamp":"2025-02-15T16:55:31.115Z"}
