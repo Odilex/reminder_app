@@ -1,13 +1,13 @@
 import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
-import { AuthProvider, useAuth } from '../context/AuthContext';
-import { ThemeProvider } from '../context/ThemeContext';
+import { AuthProvider } from '@/context/auth';
+import { ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { UserProvider } from '../context/UserContext';
 import { LanguageProvider } from '../context/LanguageContext';
 import 'react-native-reanimated';
@@ -30,7 +30,6 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
   });
-  const colorScheme = useColorScheme();
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
@@ -47,79 +46,21 @@ export default function RootLayout() {
     return null;
   }
 
-  return (
-    <NavigationThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <LanguageProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <UserProvider>
-              <RootLayoutNav />
-            </UserProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </LanguageProvider>
-    </NavigationThemeProvider>
-  );
+  return <RootLayoutNav />;
 }
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return null; // Or a loading spinner
-  }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        gestureEnabled: true,
-        animation: 'slide_from_right',
-      }}
-    >
-      {user ? (
-        <>
-          <Stack.Screen 
-            name="(tabs)" 
-            options={{ 
-              headerShown: false,
-              gestureEnabled: false,
-            }} 
-          />
-          <Stack.Screen 
-            name="modal" 
-            options={{ 
-              presentation: 'modal',
-              gestureEnabled: true,
-            }} 
-          />
-        </>
-      ) : (
-        <>
-          <Stack.Screen 
-            name="(auth)/login" 
-            options={{ 
-              headerShown: false,
-              gestureEnabled: false,
-            }} 
-          />
-          <Stack.Screen 
-            name="(auth)/signup" 
-            options={{ 
-              headerShown: false,
-              gestureEnabled: false,
-            }} 
-          />
-          <Stack.Screen 
-            name="(auth)/forgot-password" 
-            options={{ 
-              headerShown: false,
-              gestureEnabled: false,
-            }} 
-          />
-        </>
-      )}
-    </Stack>
+    <AuthProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        </Stack>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

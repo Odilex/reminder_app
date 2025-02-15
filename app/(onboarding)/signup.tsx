@@ -1,15 +1,42 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import Colors from '@/constants/Colors';
+import { signup } from '@/services/auth';
+import { useAuth } from '@/context/auth';
 
 export default function SignupScreen() {
   const router = useRouter();
+  const { signIn } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSignup = async () => {
+    if (!name || !email || !password || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await signup({ name, email, password });
+      await signIn(response.token, response.user);
+      router.push('/(tabs)');
+    } catch (error: any) {
+      Alert.alert('Error', error.response?.data?.message || 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
@@ -68,10 +95,13 @@ export default function SignupScreen() {
         </View>
 
         <TouchableOpacity 
-          style={styles.signupButton}
-          onPress={() => router.push('/(tabs)')}
+          style={[styles.signupButton, loading && styles.disabledButton]}
+          onPress={handleSignup}
+          disabled={loading}
         >
-          <Text style={styles.signupButtonText}>Create Account</Text>
+          <Text style={styles.signupButtonText}>
+            {loading ? 'Creating Account...' : 'Create Account'}
+          </Text>
         </TouchableOpacity>
 
         <View style={styles.divider}>
@@ -246,5 +276,8 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     resizeMode: 'contain',
+  },
+  disabledButton: {
+    opacity: 0.7,
   },
 }); 

@@ -51,10 +51,6 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes
-userSchema.index({ email: 1 });
-userSchema.index({ firebaseUid: 1 });
-
 // Methods
 userSchema.methods.updateStats = async function(updates) {
   Object.assign(this.stats, updates);
@@ -64,4 +60,4 @@ userSchema.methods.updateStats = async function(updates) {
 
 const User = mongoose.model('User', userSchema);
 
-export default User; 
+export default User;
