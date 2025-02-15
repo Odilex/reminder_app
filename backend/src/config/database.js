@@ -9,12 +9,20 @@ export const connectMongoose = async () => {
         version: ServerApiVersion.v1,
         strict: true,
         deprecationErrors: true,
-      }
+      },
+      retryWrites: true,
+      w: 'majority',
+      retryReads: true,
+      maxPoolSize: 10,
+      minPoolSize: 5,
+      maxIdleTimeMS: 30000,
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: 45000
     });
     console.log('MongoDB connected successfully via Mongoose');
   } catch (error) {
     console.error('MongoDB connection error:', error);
-    process.exit(1);
+    throw error; // Let the main app handle the error
   }
 };
 

@@ -1,0 +1,18 @@
+{"level":"info","message":"Connected to MongoDB","timestamp":"2025-02-15T01:02:58.360Z"}
+{"level":"info","message":"Connected to MongoDB","timestamp":"2025-02-15T01:09:25.046Z"}
+{"level":"info","message":"Connected to MongoDB","timestamp":"2025-02-15T01:14:37.485Z"}
+{"level":"info","message":"Connected to Redis","timestamp":"2025-02-15T01:14:37.490Z"}
+{"level":"info","message":"Server running on port 5000","timestamp":"2025-02-15T01:14:37.619Z"}
+{"level":"info","message":"Connected to MongoDB","timestamp":"2025-02-15T01:18:10.343Z"}
+{"level":"info","message":"Server running on port 5000","timestamp":"2025-02-15T01:18:10.430Z"}
+{"level":"info","message":"Connected to MongoDB","timestamp":"2025-02-15T01:21:01.196Z"}
+{"level":"info","message":"Server running on port 5000","timestamp":"2025-02-15T01:21:01.209Z"}
+{"level":"info","message":{"ip":"::1","method":"GET","path":"/"},"timestamp":"2025-02-15T01:23:22.642Z"}
+{"level":"info","message":{"ip":"::1","method":"GET","path":"/"},"timestamp":"2025-02-15T01:23:51.633Z"}
+{"level":"info","message":{"ip":"::1","method":"GET","path":"/health"},"timestamp":"2025-02-15T01:24:05.465Z"}
+{"level":"info","message":{"ip":"::1","method":"GET","path":"/favicon.ico"},"timestamp":"2025-02-15T01:24:05.804Z"}
+{"level":"info","message":{"ip":"::1","method":"GET","path":"/health"},"timestamp":"2025-02-15T01:27:10.220Z"}
+{"level":"info","message":"Connected to MongoDB","timestamp":"2025-02-15T01:29:19.778Z"}
+{"level":"info","message":{"ip":"::1","method":"GET","path":"/api/auth/register%20-H%20%22Content-Type:%20application/json%22%20-d%20%22%7B/%22email/%22:/%22test@example.com/%22,/%22password/%22:/%22testpassword123/%22,/%22displayName/%22:/%22Test%20User/%22%7D%22"},"timestamp":"2025-02-15T01:31:05.477Z"}
+{"level":"info","message":"Connected to MongoDB","timestamp":"2025-02-15T01:40:09.169Z"}
+{"level":"info","message":"Server running on port 5000","timestamp":"2025-02-15T01:40:09.244Z"}

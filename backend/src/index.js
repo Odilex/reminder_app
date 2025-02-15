@@ -53,7 +53,7 @@ app.use(compression());
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Firebase-Token']
 }));
 
 // Body parser middleware
@@ -77,10 +77,6 @@ const initializeApp = async () => {
     await connectMongoose();
     logger.info('Connected to MongoDB');
 
-    // Initialize Redis cache
-    await cacheService.connect();
-    logger.info('Connected to Redis');
-
     // Routes
     app.use('/api/auth', authRoutes);
     app.use('/api/reminders', reminderRoutes);
@@ -93,8 +89,7 @@ const initializeApp = async () => {
         status: 'ok',
         timestamp: new Date(),
         services: {
-          mongodb: mongoose.connection.readyState === 1,
-          redis: cacheService.client.isOpen
+          mongodb: mongoose.connection.readyState === 1
         }
       });
     });
@@ -131,10 +126,6 @@ const initializeApp = async () => {
         try {
           await mongoose.connection.close();
           logger.info('MongoDB connection closed');
-          
-          await cacheService.disconnect();
-          logger.info('Redis connection closed');
-          
           process.exit(0);
         } catch (error) {
           logger.error('Error during shutdown:', error);
