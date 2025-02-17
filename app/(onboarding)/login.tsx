@@ -1,232 +1,254 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from 'react-native';
-import { useRouter } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
+import { Link, useRouter } from 'expo-router';
 import Colors from '@/constants/Colors';
+import { useTheme } from '../../context/ThemeContext';
+import { MaterialIcons } from '@expo/vector-icons';
+import GoogleIcon from '@/components/GoogleIcon';
 
 export default function LoginScreen() {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
+  const { theme, isDarkMode } = useTheme();
+
+  const handleLogin = () => {
+    // TODO: Implement login logic
+    router.replace('/(tabs)');
+  };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Welcome Back</Text>
-        <Text style={styles.subtitle}>Sign in to continue</Text>
-      </View>
-
-      <View style={styles.form}>
-        <View style={styles.inputContainer}>
-          <MaterialIcons name="email" size={20} color={Colors.gray} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="rgba(107, 114, 128, 0.8)"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <MaterialIcons name="lock" size={20} color={Colors.gray} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="rgba(107, 114, 128, 0.8)"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-        </View>
-
-        <TouchableOpacity onPress={() => router.push('/forgot-password')}>
-          <Text style={styles.forgotPassword}>Forgot Password?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.loginButton}
-          onPress={() => router.push('/(tabs)')}
-        >
-          <Text style={styles.loginButtonText}>Login</Text>
-        </TouchableOpacity>
-
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>OR</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <View style={styles.socialButtons}>
-          <TouchableOpacity style={[styles.socialButton, styles.googleButton]}>
-            <MaterialIcons name="mail" size={24} color="#000000" />
-            <Text style={styles.socialButtonText}>Continue with Google</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.socialButton, styles.appleButton]}>
-            <MaterialIcons name="apple" size={24} color="#000000" />
-            <Text style={styles.socialButtonText}>Continue with Apple</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity 
-          style={styles.signupButton}
-          onPress={() => router.push('/signup')}
-        >
-          <Text style={styles.signupText}>
-            Don't have an account? <Text style={styles.signupLink}>Sign up</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={[styles.container, { backgroundColor: isDarkMode ? Colors.dark.background : Colors.light.background }]}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Text style={[styles.title, { color: isDarkMode ? Colors.dark.text : Colors.light.text }]}>
+            Welcome Back!
           </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          <Text style={[styles.subtitle, { color: isDarkMode ? Colors.dark.text : Colors.light.text }]}>
+            Sign in to continue
+          </Text>
+        </View>
+
+        <View style={styles.form}>
+          <View style={[styles.inputContainer, { backgroundColor: isDarkMode ? Colors.dark.card : Colors.light.card }]}>
+            <MaterialIcons 
+              name="email" 
+              size={20} 
+              color={isDarkMode ? Colors.dark.primary : Colors.light.primary} 
+            />
+            <TextInput
+              style={[styles.input, { color: isDarkMode ? Colors.dark.text : Colors.light.text }]}
+              placeholder="Email"
+              placeholderTextColor={isDarkMode ? '#9ca3af' : '#6b7280'}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+          </View>
+
+          <View style={[styles.inputContainer, { backgroundColor: isDarkMode ? Colors.dark.card : Colors.light.card }]}>
+            <MaterialIcons 
+              name="lock" 
+              size={20} 
+              color={isDarkMode ? Colors.dark.primary : Colors.light.primary} 
+            />
+            <TextInput
+              style={[styles.input, { color: isDarkMode ? Colors.dark.text : Colors.light.text }]}
+              placeholder="Password"
+              placeholderTextColor={isDarkMode ? '#9ca3af' : '#6b7280'}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              style={styles.eyeIcon}
+            >
+              <MaterialIcons
+                name={showPassword ? 'visibility' : 'visibility-off'}
+                size={20}
+                color={isDarkMode ? Colors.dark.text : Colors.light.text}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <Link href="/forgot-password" style={styles.forgotPassword}>
+            <Text style={[styles.forgotPasswordText, { color: isDarkMode ? Colors.dark.primary : Colors.light.primary }]}>
+              Forgot Password?
+            </Text>
+          </Link>
+
+          <TouchableOpacity
+            style={[styles.loginButton, { backgroundColor: isDarkMode ? Colors.dark.primary : Colors.light.primary }]}
+            onPress={handleLogin}
+          >
+            <Text style={styles.loginButtonText}>Sign In</Text>
+          </TouchableOpacity>
+
+          <View style={styles.dividerContainer}>
+            <View style={[styles.divider, { backgroundColor: isDarkMode ? Colors.dark.border : Colors.light.border }]} />
+            <Text style={[styles.dividerText, { color: isDarkMode ? Colors.dark.text : Colors.light.text }]}>or</Text>
+            <View style={[styles.divider, { backgroundColor: isDarkMode ? Colors.dark.border : Colors.light.border }]} />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.googleButton, { backgroundColor: isDarkMode ? Colors.dark.card : Colors.light.card }]}
+            onPress={() => {/* TODO: Implement Google Sign In */}}
+          >
+            <GoogleIcon size={24} />
+            <Text style={[styles.googleButtonText, { color: isDarkMode ? Colors.dark.text : Colors.light.text }]}>
+              Continue with Google
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: isDarkMode ? Colors.dark.text : Colors.light.text }]}>
+            Don't have an account?{' '}
+          </Text>
+          <Link href="/signup" style={styles.signupLink}>
+            <Text style={[styles.signupText, { color: isDarkMode ? Colors.dark.primary : Colors.light.primary }]}>
+              Sign Up
+            </Text>
+          </Link>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
-    padding: 20,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24,
   },
   header: {
-    marginTop: 60,
     marginBottom: 40,
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: Colors.text,
+    fontWeight: '800',
     marginBottom: 8,
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: Colors.gray,
+    opacity: 0.8,
   },
   form: {
-    flex: 1,
+    gap: 16,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    height: 56,
+    padding: 16,
+    borderRadius: 16,
     backgroundColor: Colors.white,
-    shadowColor: Colors.text,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 3,
+    shadowRadius: 8,
     elevation: 2,
-  },
-  inputIcon: {
-    marginRight: 12,
   },
   input: {
     flex: 1,
+    marginLeft: 12,
     fontSize: 16,
-    color: Colors.text,
+  },
+  eyeIcon: {
+    padding: 4,
   },
   forgotPassword: {
-    color: Colors.primary,
+    alignSelf: 'flex-end',
+  },
+  forgotPasswordText: {
     fontSize: 14,
-    textAlign: 'right',
-    marginBottom: 24,
+    fontWeight: '600',
   },
   loginButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 16,
     alignItems: 'center',
+    marginTop: 8,
     shadowColor: Colors.primary,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 4,
   },
   loginButtonText: {
     color: Colors.white,
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
   },
-  divider: {
+  dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 30,
+    marginVertical: 24,
   },
-  dividerLine: {
+  divider: {
     flex: 1,
     height: 1,
-    backgroundColor: Colors.border,
   },
   dividerText: {
-    color: Colors.gray,
-    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    fontSize: 14,
+    fontWeight: '500',
   },
-  socialButtons: {
-    gap: 16,
-  },
-  socialButton: {
+  googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#000000',
+    borderRadius: 16,
     backgroundColor: Colors.white,
-    shadowColor: Colors.text,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 3,
+    shadowRadius: 8,
     elevation: 2,
   },
-  googleButton: {
-    borderColor: '#000000',
-  },
-  appleButton: {
-    borderColor: '#000000',
-  },
-  socialButtonText: {
+  googleButtonText: {
     marginLeft: 12,
     fontSize: 16,
-    fontWeight: '500',
-    color: Colors.text,
+    fontWeight: '600',
   },
-  signupButton: {
-    marginTop: 'auto',
-    paddingBottom: 20,
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  footerText: {
+    fontSize: 14,
   },
   signupText: {
-    textAlign: 'center',
-    color: Colors.gray,
     fontSize: 14,
+    fontWeight: '600',
   },
   signupLink: {
     color: Colors.primary,
     fontWeight: '600',
-  },
-  googleIconContainer: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  googleIcon: {
-    width: 20,
-    height: 20,
-    resizeMode: 'contain',
   },
 }); 

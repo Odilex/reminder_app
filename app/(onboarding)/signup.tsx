@@ -1,8 +1,10 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import Colors from '@/constants/Colors';
+import GoogleIcon from '../../components/GoogleIcon';
+import { useGoogleAuth, signInWithApple } from '../../utils/auth';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -10,6 +12,31 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const { promptAsync: promptGoogleAuth } = useGoogleAuth();
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await promptGoogleAuth();
+      if (result?.type === 'success') {
+        // Handle successful Google sign-in
+        router.push('/(tabs)');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to sign in with Google');
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      const credential = await signInWithApple();
+      if (credential) {
+        // Handle successful Apple sign-in
+        router.push('/(tabs)');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to sign in with Apple');
+    }
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
@@ -81,11 +108,19 @@ export default function SignupScreen() {
         </View>
 
         <View style={styles.socialButtons}>
-          <TouchableOpacity style={[styles.socialButton, styles.googleButton]}>
-            <MaterialIcons name="mail" size={24} color="#000000" />
+          <TouchableOpacity 
+            style={[styles.socialButton, styles.googleButton]}
+            onPress={handleGoogleSignIn}
+          >
+            <View style={styles.googleIconContainer}>
+              <GoogleIcon size={24} />
+            </View>
             <Text style={styles.socialButtonText}>Continue with Google</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.socialButton, styles.appleButton]}>
+          <TouchableOpacity 
+            style={[styles.socialButton, styles.appleButton]}
+            onPress={handleAppleSignIn}
+          >
             <MaterialIcons name="apple" size={24} color="#000000" />
             <Text style={styles.socialButtonText}>Continue with Apple</Text>
           </TouchableOpacity>
@@ -199,8 +234,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 16,
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#000000',
+    borderWidth: 1,
+    borderColor: Colors.border,
     backgroundColor: Colors.white,
     shadowColor: Colors.text,
     shadowOffset: {
@@ -212,10 +247,10 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   googleButton: {
-    borderColor: '#000000',
+    borderColor: Colors.border,
   },
   appleButton: {
-    borderColor: '#000000',
+    borderColor: Colors.border,
   },
   socialButtonText: {
     marginLeft: 12,

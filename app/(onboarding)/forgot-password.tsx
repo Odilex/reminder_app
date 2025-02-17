@@ -2,11 +2,11 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-nativ
 import { Stack } from 'expo-router';
 import { useState, useContext } from 'react';
 import Colors from '@/constants/Colors';
-import { ThemeContext } from '../../context/ThemeContext';
+import { ThemeContext, useTheme } from '../../context/ThemeContext';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
-  const { isDarkMode } = useContext(ThemeContext);
+  const { isDarkMode } = useTheme();
 
   const handleResetPassword = () => {
     // Implement password reset logic here
@@ -16,17 +16,17 @@ export default function ForgotPassword() {
   return (
     <View style={[
       styles.container,
-      isDarkMode && { backgroundColor: Colors.dark.background }
+      { backgroundColor: isDarkMode ? Colors.dark.background : Colors.light.background }
     ]}>
       <Stack.Screen options={{ title: 'Forgot Password' }} />
       
       <Text style={[
         styles.title,
-        isDarkMode && { color: Colors.dark.text }
+        { color: isDarkMode ? Colors.dark.text : Colors.light.text }
       ]}>Reset Password</Text>
       <Text style={[
         styles.subtitle,
-        isDarkMode && { color: Colors.dark.text }
+        { color: isDarkMode ? Colors.dark.text : Colors.light.text }
       ]}>Enter your email address to reset your password</Text>
       
       <TextInput
@@ -57,7 +57,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -65,7 +64,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 10,
-    color: Colors.text,
   },
   subtitle: {
     fontSize: 16,

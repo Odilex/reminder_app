@@ -1,41 +1,47 @@
-const tintColorLight = '#2f95dc';
-const tintColorDark = '#fff';
+const tintColorLight = '#6366f1';
+const tintColorDark = '#818cf8';
 
-export const Colors = {
-  primary: '#6366f1',
-  background: '#f3f4f6',
-  white: '#fff',
-  text: '#1f2937',
-  gray: '#6b7280',
-  border: '#e5e7eb',
-  error: '#ef4444',
-  card: '#f9fafb',
-  success: '#10b981',
-  warning: '#f59e0b',
-
-  // Light theme
+export default {
   light: {
     text: '#1f2937',
-    background: '#f3f4f6',
+    background: '#f9fafb',
+    tint: tintColorLight,
+    tabIconDefault: '#9ca3af',
+    tabIconSelected: tintColorLight,
+    primary: '#6366f1',
+    secondary: '#8b5cf6',
+    accent: '#f472b6',
+    success: '#22c55e',
+    warning: '#f59e0b',
+    error: '#ef4444',
     card: '#ffffff',
     border: '#e5e7eb',
-    primary: '#6366f1',
-    tint: tintColorLight,
-    tabIconDefault: '#ccc',
-    tabIconSelected: tintColorLight,
+    notification: '#ef4444',
   },
-
-  // Dark theme
   dark: {
-    text: '#ffffff',
-    background: '#1a1a1a',
-    card: '#2a2a2a',
-    border: '#404040',
-    primary: '#818cf8',
+    text: '#f3f4f6',
+    background: '#111827',
     tint: tintColorDark,
-    tabIconDefault: '#ccc',
+    tabIconDefault: '#6b7280',
     tabIconSelected: tintColorDark,
+    primary: '#818cf8',
+    secondary: '#a78bfa',
+    accent: '#f9a8d4',
+    success: '#4ade80',
+    warning: '#fbbf24',
+    error: '#f87171',
+    card: '#1f2937',
+    border: '#374151',
+    notification: '#f87171',
   },
+  primary: '#6366f1',
+  secondary: '#8b5cf6',
+  accent: '#f472b6',
+  success: '#22c55e',
+  warning: '#f59e0b',
+  error: '#ef4444',
+  white: '#ffffff',
+  black: '#000000',
+  gray: '#9ca3af',
+  border: '#e5e7eb',
 };
-
-export default Colors;
