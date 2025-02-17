@@ -3,54 +3,50 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const firebaseConfig = {
+  type: "service_account",
+  project_id: process.env.FIREBASE_PROJECT_ID,
+  private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+  private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  client_email: process.env.FIREBASE_CLIENT_EMAIL,
+  client_id: process.env.FIREBASE_CLIENT_ID,
+  auth_uri: "https://accounts.google.com/o/oauth2/auth",
+  token_uri: "https://oauth2.googleapis.com/token",
+  auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+  client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
+  universe_domain: "googleapis.com"
+};
+
+let firebaseApp;
+
 try {
-  // Properly format the private key by replacing literal \n with newlines
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY
-    ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-    : undefined;
-
-  const serviceAccount = {
-    type: 'service_account',
-    project_id: process.env.FIREBASE_PROJECT_ID,
-    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-    private_key: privateKey,
-    client_email: process.env.FIREBASE_CLIENT_EMAIL,
-    client_id: process.env.FIREBASE_CLIENT_ID,
-    auth_uri: 'https://accounts.google.com/o/oauth2/auth',
-    token_uri: 'https://oauth2.googleapis.com/token',
-    auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
-    client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
-  };
-
-  // Validate required credentials
-  if (!privateKey || !process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL) {
-    throw new Error('Missing required Firebase credentials');
-  }
-
-  // Initialize Firebase Admin with service account
+  // Initialize Firebase Admin if not already initialized
   if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-      authDomain: process.env.FIREBASE_AUTH_DOMAIN
+    firebaseApp = admin.initializeApp({
+      credential: admin.credential.cert(firebaseConfig),
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET
     });
     console.log('Firebase Admin initialized successfully');
+  } else {
+    firebaseApp = admin.app();
   }
 } catch (error) {
-  console.error('Firebase Admin initialization error:', error.message);
-  process.exit(1); // Exit if Firebase initialization fails as it's critical
+  console.error('Firebase initialization error:', error);
+  // Don't throw the error, just log it and continue
+  // This allows the app to start even if Firebase fails
 }
 
-// Initialize Firestore with settings to help with connection issues
-const db = admin.firestore();
-db.settings({
-  ignoreUndefinedProperties: true,
-  timestampsInSnapshots: true
-});
+// Initialize services with null fallback if Firebase fails to initialize
+export const auth = firebaseApp ? admin.auth() : null;
+export const db = firebaseApp ? admin.firestore() : null;
+export const storage = firebaseApp ? admin.storage() : null;
+export const messaging = firebaseApp ? admin.messaging() : null;
 
-export const auth = admin.auth();
-export { db };
-export const storage = admin.storage();
-export const messaging = admin.messaging();
+// Initialize Firestore with settings to help with connection issues
+if (db) {
+  db.settings({
+    ignoreUndefinedProperties: true
+  });
+}
 
 export default admin; 

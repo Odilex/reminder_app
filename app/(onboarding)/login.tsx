@@ -1,14 +1,13 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useState } from 'react';
 import Colors from '@/constants/Colors';
-import { login } from '@/services/auth';
+import { signInWithEmailAndPassword, getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useAuth } from '@/context/auth';
 
 export default function LoginScreen() {
-  const router = useRouter();
-  const { signIn } = useAuth();
+  const { user } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,15 +18,26 @@ export default function LoginScreen() {
       return;
     }
 
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await login({ email, password });
-      await signIn(response.token, response.user);
-      router.push('/(tabs)');
+      const auth = getAuth();
+      await signInWithEmailAndPassword(auth, email, password);
+      // No need to navigate - AuthProvider will handle it
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'An error occurred');
+      Alert.alert('Error', error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const auth = getAuth();
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      // No need to navigate - AuthProvider will handle it
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
     }
   };
 
@@ -49,6 +59,7 @@ export default function LoginScreen() {
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
+            editable={!loading}
           />
         </View>
 
@@ -61,19 +72,20 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            editable={!loading}
           />
         </View>
 
-        <TouchableOpacity onPress={() => router.push('/forgot-password')}>
-          <Text style={styles.forgotPassword}>Forgot Password?</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity 
-          style={[styles.loginButton, loading && styles.disabledButton]}
+          style={[styles.button, loading && styles.disabledButton]}
           onPress={handleLogin}
           disabled={loading}
         >
-          <Text style={styles.loginButtonText}>{loading ? 'Logging in...' : 'Login'}</Text>
+          {loading ? (
+            <ActivityIndicator color={Colors.white} />
+          ) : (
+            <Text style={styles.buttonText}>Login</Text>
+          )}
         </TouchableOpacity>
 
         <View style={styles.divider}>
@@ -83,23 +95,30 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.socialButtons}>
-          <TouchableOpacity style={[styles.socialButton, styles.googleButton]}>
+          <TouchableOpacity 
+            style={[styles.socialButton, styles.googleButton]}
+            onPress={handleGoogleLogin}
+            disabled={loading}
+          >
             <MaterialIcons name="mail" size={24} color="#000000" />
             <Text style={styles.socialButtonText}>Continue with Google</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.socialButton, styles.appleButton]}>
-            <MaterialIcons name="apple" size={24} color="#000000" />
-            <Text style={styles.socialButtonText}>Continue with Apple</Text>
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity 
-          style={styles.signupButton}
-          onPress={() => router.push('/signup')}
+          onPress={() => router.push('/(onboarding)/signup')}
+          style={styles.linkButton}
+          disabled={loading}
         >
-          <Text style={styles.signupText}>
-            Don't have an account? <Text style={styles.signupLink}>Sign up</Text>
-          </Text>
+          <Text style={styles.linkText}>Don't have an account? Sign up</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          onPress={() => router.push('/(onboarding)/forgot-password')}
+          style={styles.linkButton}
+          disabled={loading}
+        >
+          <Text style={styles.linkText}>Forgot Password?</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -156,13 +175,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.text,
   },
-  forgotPassword: {
-    color: Colors.primary,
-    fontSize: 14,
-    textAlign: 'right',
-    marginBottom: 24,
-  },
-  loginButton: {
+  button: {
     backgroundColor: Colors.primary,
     paddingVertical: 16,
     borderRadius: 12,
@@ -176,7 +189,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  loginButtonText: {
+  buttonText: {
     color: Colors.white,
     fontSize: 18,
     fontWeight: '600',
@@ -228,18 +241,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: Colors.text,
   },
-  signupButton: {
-    marginTop: 'auto',
-    paddingBottom: 20,
+  linkButton: {
+    marginTop: 15,
+    alignItems: 'center',
   },
-  signupText: {
-    textAlign: 'center',
-    color: Colors.gray,
-    fontSize: 14,
-  },
-  signupLink: {
+  linkText: {
     color: Colors.primary,
-    fontWeight: '600',
+    fontSize: 16,
   },
   googleIconContainer: {
     width: 24,

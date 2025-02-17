@@ -7,7 +7,7 @@ import compression from 'compression';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import winston from 'winston';
-import { connectMongoose } from './config/database.js';
+import connectMongoose from './config/database.js';
 import { cacheService } from './services/cache.js';
 
 // Routes

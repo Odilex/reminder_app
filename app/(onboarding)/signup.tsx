@@ -1,40 +1,53 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useState } from 'react';
 import Colors from '@/constants/Colors';
-import { signup } from '@/services/auth';
+import { createUserWithEmailAndPassword, getAuth, updateProfile, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useAuth } from '@/context/auth';
 
 export default function SignupScreen() {
-  const router = useRouter();
-  const { signIn } = useAuth();
+  const { user } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async () => {
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name || !email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
       return;
     }
 
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await signup({ name, email, password });
-      await signIn(response.token, response.user);
-      router.push('/(tabs)');
+      const auth = getAuth();
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      await updateProfile(userCredential.user, {
+        displayName: name
+      });
+      // No need to navigate - AuthProvider will handle it
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.message || 'An error occurred');
+      Alert.alert('Error', error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    try {
+      const auth = getAuth();
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      // No need to navigate - AuthProvider will handle it
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
     }
   };
 
@@ -54,6 +67,8 @@ export default function SignupScreen() {
             placeholderTextColor="rgba(107, 114, 128, 0.8)"
             value={name}
             onChangeText={setName}
+            autoCapitalize="words"
+            editable={!loading}
           />
         </View>
 
@@ -67,6 +82,7 @@ export default function SignupScreen() {
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
+            editable={!loading}
           />
         </View>
 
@@ -79,18 +95,7 @@ export default function SignupScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
-          />
-        </View>
-
-        <View style={styles.inputContainer}>
-          <MaterialIcons name="lock" size={20} color={Colors.gray} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm Password"
-            placeholderTextColor="rgba(107, 114, 128, 0.8)"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
+            editable={!loading}
           />
         </View>
 
@@ -99,8 +104,13 @@ export default function SignupScreen() {
           onPress={handleSignup}
           disabled={loading}
         >
+          {loading ? (
+            <ActivityIndicator color={Colors.white} />
+          ) : (
+            <Text style={styles.signupButtonText}>Sign Up</Text>
+          )}
           <Text style={styles.signupButtonText}>
-            {loading ? 'Creating Account...' : 'Create Account'}
+            {loading ? 'Creating Account...' : 'Sign Up'}
           </Text>
         </TouchableOpacity>
 
@@ -123,10 +133,10 @@ export default function SignupScreen() {
 
         <TouchableOpacity 
           style={styles.loginButton}
-          onPress={() => router.back()}
+          onPress={() => router.push('/(onboarding)/login')}
         >
           <Text style={styles.loginText}>
-            Already have an account? <Text style={styles.loginLink}>Sign in</Text>
+            Already have an account? <Text style={styles.loginLink}>Login</Text>
           </Text>
         </TouchableOpacity>
       </View>
