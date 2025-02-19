@@ -1,7 +1,6 @@
-import jwt from 'jsonwebtoken';
-import { auth as firebaseAuth } from '../config/firebase.js';
+import { auth } from '../config/firebase.js';
 
-const auth = async (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   try {
     // Get token from header
     const authHeader = req.header('Authorization');
@@ -11,26 +10,23 @@ const auth = async (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
 
-    // Verify JWT token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { userId: decoded.userId };
-
-    // Verify Firebase token if provided
-    const firebaseToken = req.header('Firebase-Token');
-    if (firebaseToken) {
-      try {
-        const decodedFirebaseToken = await firebaseAuth.verifyIdToken(firebaseToken);
-        req.firebaseUser = decodedFirebaseToken;
-      } catch (error) {
-        console.error('Firebase token verification error:', error);
-      }
+    try {
+      // Verify Firebase token
+      const decodedToken = await auth.verifyIdToken(token);
+      req.user = {
+        uid: decodedToken.uid,
+        email: decodedToken.email,
+        emailVerified: decodedToken.email_verified,
+      };
+      next();
+    } catch (error) {
+      console.error('Token verification error:', error);
+      return res.status(401).json({ message: 'Invalid token' });
     }
-
-    next();
   } catch (error) {
     console.error('Auth middleware error:', error);
-    res.status(401).json({ message: 'Token is not valid' });
+    return res.status(401).json({ message: 'Authentication failed' });
   }
 };
 
-export default auth; 
+export default authMiddleware; 

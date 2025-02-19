@@ -1,145 +1,124 @@
-import mongoose from 'mongoose';
+import { db } from '../config/firebase.js';
 
-const reminderSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  description: {
-    type: String,
-    trim: true
-  },
-  date: {
-    type: Date,
-    required: true
-  },
-  time: {
-    type: String,
-    required: true,
-    match: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9] (AM|PM)$/
-  },
-  category: {
-    type: String,
-    required: true,
-    enum: ['work', 'personal', 'shopping', 'health', 'other']
-  },
-  priority: {
-    type: String,
-    required: true,
-    enum: ['low', 'medium', 'high']
-  },
-  isCompleted: {
-    type: Boolean,
-    default: false
-  },
-  isLocationBased: {
-    type: Boolean,
-    default: false
-  },
-  location: {
-    name: String,
+const remindersCollection = db.collection('reminders');
+
+class Reminder {
+  static async create(reminderData) {
+    const {
+      title,
+      description = '',
+      date,
+      time,
+      category,
+      priority,
+      userId,
+      isLocationBased = false,
+      location = null,
+      recurrence = null,
+      attachments = [],
+      sharedWith = [],
+    } = reminderData;
+
+    const reminder = {
+      title,
+      description,
+      date: new Date(date),
+      time,
+      category,
+      priority,
+      userId,
+      isCompleted: false,
+      isLocationBased,
+      location: location ? {
+        name: location.name,
     coordinates: {
-      type: {
-        type: String,
-        enum: ['Point'],
-        default: 'Point'
-      },
-      coordinates: {
-        type: [Number],
-        default: undefined
-      }
+          type: 'Point',
+          coordinates: location.coordinates,
+        },
+      } : null,
+      recurrence,
+      attachments,
+      sharedWith,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const docRef = await remindersCollection.add(reminder);
+    return { id: docRef.id, ...reminder };
+  }
+
+  static async findById(id) {
+    const doc = await remindersCollection.doc(id).get();
+    return doc.exists ? { id: doc.id, ...doc.data() } : null;
+  }
+
+  static async findByUser(userId, filters = {}) {
+    let query = remindersCollection.where('userId', '==', userId);
+
+    if (filters.category) {
+      query = query.where('category', '==', filters.category);
     }
-  },
-  isRecurring: {
-    type: Boolean,
-    default: false
-  },
-  recurringPattern: {
-    type: String,
-    enum: ['daily', 'weekly', 'monthly', 'yearly', null],
-    default: null
-  },
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  firebaseId: {
-    type: String,
-    sparse: true
-  },
-  attachments: [{
-    name: String,
-    url: String,
-    type: String
-  }],
-  tags: [{
-    type: String,
-    trim: true
-  }],
-  notifications: [{
-    type: {
-      type: String,
-      enum: ['email', 'push'],
-      required: true
-    },
-    time: {
-      type: Number, // minutes before the reminder
-      required: true
-    },
-    sent: {
-      type: Boolean,
-      default: false
+    if (filters.isCompleted !== undefined) {
+      query = query.where('isCompleted', '==', filters.isCompleted);
     }
-  }]
-}, {
-  timestamps: true
-});
-
-// Indexes
-reminderSchema.index({ user: 1, date: 1 });
-reminderSchema.index({ user: 1, category: 1 });
-reminderSchema.index({ 'location.coordinates': '2dsphere' });
-
-// Methods
-reminderSchema.methods.markComplete = async function() {
-  this.isCompleted = true;
-  await this.save();
-  
-  // Update user stats
-  await this.model('User').findByIdAndUpdate(this.user, {
-    $inc: {
-      'stats.completedReminders': 1
+    if (filters.priority) {
+      query = query.where('priority', '==', filters.priority);
     }
-  });
-};
+    if (filters.startDate) {
+      query = query.where('date', '>=', new Date(filters.startDate));
+    }
+    if (filters.endDate) {
+      query = query.where('date', '<=', new Date(filters.endDate));
+    }
 
-reminderSchema.methods.reschedule = async function(newDate, newTime) {
-  this.date = newDate;
-  this.time = newTime;
-  await this.save();
-};
+    const snapshot = await query.get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  }
 
-// Statics
-reminderSchema.statics.findUpcoming = function(userId, limit = 5) {
-  return this.find({
-    user: userId,
-    isCompleted: false,
-    date: { $gte: new Date() }
-  })
-  .sort('date')
-  .limit(limit);
-};
+  static async update(id, updateData) {
+    const updates = {
+      ...updateData,
+      updatedAt: new Date(),
+    };
+    await remindersCollection.doc(id).update(updates);
+    return this.findById(id);
+  }
 
-reminderSchema.statics.findByCategory = function(userId, category) {
-  return this.find({
-    user: userId,
-    category,
-    isCompleted: false
-  }).sort('date');
-};
+  static async delete(id) {
+    await remindersCollection.doc(id).delete();
+  }
 
-const Reminder = mongoose.model('Reminder', reminderSchema);
+  static async markComplete(id, isCompleted = true) {
+    const updates = {
+      isCompleted,
+      updatedAt: new Date(),
+    };
+    await remindersCollection.doc(id).update(updates);
+    return this.findById(id);
+  }
+
+  static async shareWith(id, userIds) {
+    const updates = {
+      sharedWith: userIds,
+      updatedAt: new Date(),
+    };
+    await remindersCollection.doc(id).update(updates);
+    return this.findById(id);
+  }
+
+  static async findSharedWithUser(userId) {
+    const snapshot = await remindersCollection
+      .where('sharedWith', 'array-contains', userId)
+      .get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  }
+
+  static async findByLocation(coordinates, radius) {
+    // Note: Firestore doesn't support geospatial queries directly
+    // For location-based queries, you might want to use Firebase Realtime Database
+    // or implement a different solution (like using a geohashing library)
+    throw new Error('Location-based queries are not implemented in Firestore');
+  }
+}
 
 export default Reminder; 

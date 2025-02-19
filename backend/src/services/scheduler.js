@@ -1,13 +1,34 @@
 import cron from 'node-cron';
 import moment from 'moment-timezone';
-import { messaging } from '../config/firebase.js';
-import Reminder from '../models/Reminder.js';
+import { messaging, db } from '../config/firebase.js';
 import { aiService } from './ai.js';
 
 class SchedulerService {
   constructor() {
     this.jobs = new Map();
-    this.initializeJobs();
+  }
+
+  async initialize() {
+    try {
+      await this.createRequiredIndexes();
+      this.initializeJobs();
+      console.log('Scheduler service initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize scheduler service:', error);
+    }
+  }
+
+  async createRequiredIndexes() {
+    try {
+      // Log index creation requirements
+      console.log('Required Firestore indexes:');
+      console.log('1. Collection: reminders');
+      console.log('   Fields: isCompleted (Ascending), date (Ascending)');
+      console.log('Please create the index at:');
+      console.log('https://console.firebase.google.com/project/reminder-app-fbdec/firestore/indexes');
+    } catch (error) {
+      console.error('Error checking indexes:', error);
+    }
   }
 
   initializeJobs() {
@@ -24,23 +45,28 @@ class SchedulerService {
     cron.schedule('0 12 * * *', () => this.generateDailySuggestions());
   }
 
-  // Process recurring reminders
   async processRecurringReminders() {
     try {
-      const today = moment().startOf('day');
-      const reminders = await Reminder.find({ isRecurring: true });
-
-      for (const reminder of reminders) {
+      const now = moment().startOf('day');
+      const remindersRef = db.collection('reminders');
+      const snapshot = await remindersRef
+        .where('recurrence', '!=', null)
+        .get();
+      
+      for (const doc of snapshot.docs) {
+        const reminder = { id: doc.id, ...doc.data() };
         const nextOccurrence = this.calculateNextOccurrence(reminder);
         if (nextOccurrence) {
-          const newReminder = new Reminder({
-            ...reminder.toObject(),
+          const newReminder = {
+            ...reminder,
             date: nextOccurrence.toDate(),
-            isRecurring: false,
-            _id: undefined
-          });
+            recurrence: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+          delete newReminder.id;
 
-          await newReminder.save();
+          await remindersRef.add(newReminder);
         }
       }
     } catch (error) {
@@ -48,12 +74,11 @@ class SchedulerService {
     }
   }
 
-  // Calculate next occurrence based on recurring pattern
   calculateNextOccurrence(reminder) {
     const currentDate = moment();
     const reminderDate = moment(reminder.date);
-
-    switch (reminder.recurringPattern) {
+    
+    switch (reminder.recurrence) {
       case 'daily':
         return reminderDate.add(1, 'day');
       case 'weekly':
@@ -67,44 +92,57 @@ class SchedulerService {
     }
   }
 
-  // Send notifications for upcoming reminders
   async sendUpcomingReminders() {
     try {
-      const now = moment();
-      const oneHourFromNow = moment().add(1, 'hour');
+      const now = moment().toDate();
+      const oneHourFromNow = moment().add(1, 'hour').toDate();
+      
+      // First, get all reminders within the time range
+      const remindersRef = db.collection('reminders');
+      const snapshot = await remindersRef
+        .where('date', '>=', now)
+        .where('date', '<=', oneHourFromNow)
+        .get();
 
-      const upcomingReminders = await Reminder.find({
-        date: {
-          $gte: now.toDate(),
-          $lte: oneHourFromNow.toDate()
-        },
-        isCompleted: false
-      }).populate('user');
+      // Then filter for incomplete reminders in memory
+      const upcomingReminders = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(reminder => !reminder.isCompleted);
 
+      // Send notifications for each reminder
       for (const reminder of upcomingReminders) {
-        if (reminder.user.fcmToken) {
-          await this.sendPushNotification(reminder);
-        }
+        await this.sendPushNotification(reminder);
       }
     } catch (error) {
-      console.error('Send upcoming reminders error:', error);
+      if (error.code === 9 && error.message.includes('requires an index')) {
+        console.error('Missing Firestore index. Please create the required index at:');
+        console.error(error.details);
+      } else {
+        console.error('Send upcoming reminders error:', error);
+      }
     }
   }
 
-  // Send push notification
   async sendPushNotification(reminder) {
     try {
+      const usersRef = db.collection('users');
+      const userDoc = await usersRef.doc(reminder.userId).get();
+      const user = userDoc.data();
+
+      if (!user?.fcmToken) {
+        return;
+      }
+
       const message = {
         notification: {
-          title: 'Upcoming Reminder',
-          body: reminder.title
+          title: reminder.title,
+          body: reminder.description || 'Time for your reminder!',
         },
         data: {
-          reminderId: reminder._id.toString(),
-          category: reminder.category,
-          priority: reminder.priority
+          reminderId: reminder.id,
+          type: 'reminder',
         },
-        token: reminder.user.fcmToken
+        token: user.fcmToken,
       };
 
       await messaging.send(message);
@@ -113,23 +151,63 @@ class SchedulerService {
     }
   }
 
-  // Generate weekly insights for users
+  async generateUserInsights(user) {
+    try {
+      const oneWeekAgo = moment().subtract(7, 'days').toDate();
+      const remindersRef = db.collection('reminders');
+      const snapshot = await remindersRef
+        .where('userId', '==', user.id)
+        .where('date', '>=', oneWeekAgo)
+        .get();
+
+      const reminders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      // Calculate basic insights
+      const totalReminders = reminders.length;
+      const completedReminders = reminders.filter(r => r.isCompleted).length;
+      const completionRate = totalReminders > 0 ? (completedReminders / totalReminders) * 100 : 0;
+
+      // Category breakdown
+      const categoryBreakdown = reminders.reduce((acc, reminder) => {
+        acc[reminder.category] = (acc[reminder.category] || 0) + 1;
+        return acc;
+      }, {});
+
+      // Most active days
+      const dayBreakdown = reminders.reduce((acc, reminder) => {
+        const day = moment(reminder.date).format('dddd');
+        acc[day] = (acc[day] || 0) + 1;
+        return acc;
+      }, {});
+
+      return {
+        period: {
+          start: oneWeekAgo,
+          end: new Date(),
+        },
+        stats: {
+          total: totalReminders,
+          completed: completedReminders,
+          completionRate: Math.round(completionRate),
+        },
+        categories: categoryBreakdown,
+        activeDays: dayBreakdown,
+      };
+    } catch (error) {
+      console.error('Generate user insights error:', error);
+      return null;
+    }
+  }
+
   async generateWeeklyInsights() {
     try {
-      const users = await User.find();
-      
-      for (const user of users) {
-        const userReminders = await Reminder.find({
-          user: user._id,
-          date: {
-            $gte: moment().subtract(7, 'days').toDate()
-          }
-        });
+      const usersRef = db.collection('users');
+      const snapshot = await usersRef.get();
 
-        const insights = await aiService.generateInsights(userReminders);
-        
-        // Store insights in user's profile or send as notification
-        if (insights && user.fcmToken) {
+      for (const doc of snapshot.docs) {
+        const user = { id: doc.id, ...doc.data() };
+        const insights = await this.generateUserInsights(user);
+        if (insights) {
           await this.sendInsightNotification(user, insights);
         }
       }
@@ -138,22 +216,15 @@ class SchedulerService {
     }
   }
 
-  // Generate daily AI suggestions
   async generateDailySuggestions() {
     try {
-      const users = await User.find();
-      
-      for (const user of users) {
-        const userReminders = await Reminder.find({
-          user: user._id,
-          date: {
-            $gte: moment().subtract(30, 'days').toDate()
-          }
-        });
+      const usersRef = db.collection('users');
+      const snapshot = await usersRef.get();
 
-        const suggestions = await aiService.generateSuggestions(userReminders);
-        
-        if (suggestions && user.fcmToken) {
+      for (const doc of snapshot.docs) {
+        const user = { id: doc.id, ...doc.data() };
+        const suggestions = await aiService.generateSuggestions(user);
+        if (suggestions) {
           await this.sendSuggestionsNotification(user, suggestions);
         }
       }
@@ -162,73 +233,51 @@ class SchedulerService {
     }
   }
 
-  // Send insights notification
   async sendInsightNotification(user, insights) {
-    try {
-      const message = {
-        notification: {
-          title: 'Weekly Productivity Insights',
-          body: 'Check out your reminder patterns and suggestions!'
-        },
-        data: {
-          type: 'insights',
-          insights: JSON.stringify(insights)
-        },
-        token: user.fcmToken
-      };
+    if (!user.fcmToken) {
+      return;
+    }
 
+    const message = {
+      notification: {
+        title: 'Your Weekly Insights',
+        body: 'Check out your productivity insights for this week!',
+      },
+      data: {
+        type: 'insights',
+        insights: JSON.stringify(insights),
+      },
+      token: user.fcmToken,
+    };
+
+    try {
       await messaging.send(message);
     } catch (error) {
-      console.error('Send insights notification error:', error);
+      console.error('Send insight notification error:', error);
     }
   }
 
-  // Send suggestions notification
   async sendSuggestionsNotification(user, suggestions) {
-    try {
-      const message = {
-        notification: {
-          title: 'Smart Reminder Suggestions',
-          body: 'We have some reminder suggestions based on your patterns!'
-        },
-        data: {
-          type: 'suggestions',
-          suggestions: JSON.stringify(suggestions)
-        },
-        token: user.fcmToken
-      };
+    if (!user.fcmToken) {
+      return;
+    }
 
+    const message = {
+      notification: {
+        title: 'AI Suggestions',
+        body: 'We have some personalized suggestions for you!',
+      },
+      data: {
+        type: 'suggestions',
+        suggestions: JSON.stringify(suggestions),
+      },
+      token: user.fcmToken,
+    };
+
+    try {
       await messaging.send(message);
     } catch (error) {
       console.error('Send suggestions notification error:', error);
-    }
-  }
-
-  // Schedule a specific reminder
-  scheduleReminder(reminder) {
-    const scheduledTime = moment(reminder.date).subtract(1, 'hour');
-    const cronExpression = this.convertToCronExpression(scheduledTime);
-
-    if (cronExpression) {
-      const job = cron.schedule(cronExpression, () => {
-        this.sendPushNotification(reminder);
-      });
-
-      this.jobs.set(reminder._id.toString(), job);
-    }
-  }
-
-  // Convert date to cron expression
-  convertToCronExpression(date) {
-    return `${date.minutes()} ${date.hours()} ${date.date()} ${date.month() + 1} *`;
-  }
-
-  // Cancel a scheduled reminder
-  cancelReminder(reminderId) {
-    const job = this.jobs.get(reminderId);
-    if (job) {
-      job.stop();
-      this.jobs.delete(reminderId);
     }
   }
 }

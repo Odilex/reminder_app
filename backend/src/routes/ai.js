@@ -1,33 +1,40 @@
 import express from 'express';
-import auth from '../middleware/auth.js';
+import authMiddleware from '../middleware/auth.js';
 import { aiService } from '../services/ai.js';
 import { cacheService } from '../services/cache.js';
-import Reminder from '../models/Reminder.js';
+import { db } from '../config/firebase.js';
 
 const router = express.Router();
 
-// Get AI-generated reminder suggestions
-router.get('/suggestions', auth, async (req, res) => {
+// Get AI-generated suggestions for the user
+router.get('/suggestions', authMiddleware, async (req, res) => {
   try {
-    // Check cache first
-    const cachedSuggestions = await cacheService.getCachedAISuggestions(req.user.userId);
+    const cacheKey = `suggestions:${req.user.uid}`;
+    const cachedSuggestions = await cacheService.get(cacheKey);
+    
     if (cachedSuggestions) {
       return res.json(cachedSuggestions);
     }
 
-    // Get user's reminders for the last 30 days
-    const reminders = await Reminder.find({
-      user: req.user.userId,
-      date: {
-        $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-      }
-    });
+    // Get user's reminders from Firestore
+    const remindersRef = db.collection('reminders');
+    const remindersSnapshot = await remindersRef
+      .where('userId', '==', req.user.uid)
+      .orderBy('date', 'desc')
+      .limit(50)
+      .get();
 
+    const reminders = remindersSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    // Generate suggestions using the AI service
     const suggestions = await aiService.generateSuggestions(reminders);
-    
-    // Cache the suggestions
-    await cacheService.cacheAISuggestions(req.user.userId, suggestions);
-    
+
+    // Cache the suggestions for 30 minutes
+    await cacheService.set(cacheKey, suggestions, 1800);
+
     res.json(suggestions);
   } catch (error) {
     console.error('Get AI suggestions error:', error);
@@ -35,15 +42,21 @@ router.get('/suggestions', auth, async (req, res) => {
   }
 });
 
-// Parse natural language input
-router.post('/parse', auth, async (req, res) => {
+// Parse natural language input for reminder creation
+router.post('/parse', authMiddleware, async (req, res) => {
   try {
-    const { text } = req.body;
-    if (!text) {
-      return res.status(400).json({ message: 'Text is required' });
+    const { input } = req.body;
+    
+    if (!input || typeof input !== 'string') {
+      return res.status(400).json({ message: 'Valid input text is required' });
     }
 
-    const parsedData = await aiService.parseNaturalLanguage(text);
+    const parsedData = await aiService.parseNaturalLanguage(input);
+    
+    if (!parsedData) {
+      return res.status(422).json({ message: 'Could not parse the input' });
+    }
+
     res.json(parsedData);
   } catch (error) {
     console.error('Parse natural language error:', error);
@@ -51,111 +64,69 @@ router.post('/parse', auth, async (req, res) => {
   }
 });
 
-// Get user insights
-router.get('/insights', auth, async (req, res) => {
+// Get insights about user's reminder patterns
+router.get('/insights', authMiddleware, async (req, res) => {
   try {
-    // Check cache first
-    const cachedInsights = await cacheService.getCachedUserInsights(req.user.userId);
+    const cacheKey = `insights:${req.user.uid}`;
+    const cachedInsights = await cacheService.get(cacheKey);
+    
     if (cachedInsights) {
       return res.json(cachedInsights);
     }
 
-    // Get user's reminders
-    const reminders = await Reminder.find({
-      user: req.user.userId,
-      date: {
-        $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-      }
-    });
+    // Get user's reminders from the last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+    const remindersRef = db.collection('reminders');
+    const remindersSnapshot = await remindersRef
+      .where('userId', '==', req.user.uid)
+      .where('date', '>=', thirtyDaysAgo)
+      .get();
+
+    const reminders = remindersSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    // Generate insights using the AI service
     const insights = await aiService.generateInsights(reminders);
-    
-    // Cache the insights
-    await cacheService.cacheUserInsights(req.user.userId, insights);
-    
+
+    // Cache insights for 1 hour
+    await cacheService.set(cacheKey, insights, 3600);
+
     res.json(insights);
   } catch (error) {
-    console.error('Get insights error:', error);
+    console.error('Get AI insights error:', error);
     res.status(500).json({ message: 'Error generating insights' });
   }
 });
 
-// Get optimal time suggestion for a reminder
-router.post('/optimal-time', auth, async (req, res) => {
+// Train AI model with user feedback
+router.post('/feedback', authMiddleware, async (req, res) => {
   try {
-    const { reminder } = req.body;
-    if (!reminder) {
-      return res.status(400).json({ message: 'Reminder data is required' });
+    const { suggestionId, isHelpful, feedback } = req.body;
+    
+    if (!suggestionId) {
+      return res.status(400).json({ message: 'Suggestion ID is required' });
     }
 
-    // Get user's reminder history
-    const userHistory = await Reminder.find({
-      user: req.user.userId,
-      category: reminder.category,
-      isCompleted: true
-    }).sort('-date').limit(10);
-
-    const optimalTime = await aiService.predictOptimalTime(reminder, userHistory);
-    res.json(optimalTime);
-  } catch (error) {
-    console.error('Get optimal time error:', error);
-    res.status(500).json({ message: 'Error predicting optimal time' });
-  }
-});
-
-// Get category suggestions for a reminder
-router.post('/suggest-category', auth, async (req, res) => {
-  try {
-    const { title, description } = req.body;
-    if (!title) {
-      return res.status(400).json({ message: 'Reminder title is required' });
-    }
-
-    const prompt = `Based on this reminder title: "${title}" ${description ? `and description: "${description}"` : ''}, 
-      suggest the most appropriate category from: Work, Personal, Shopping, Health.
-      Return only the category name.`;
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0,
-      max_tokens: 10
+    // Store feedback in Firestore
+    await db.collection('ai_feedback').add({
+      userId: req.user.uid,
+      suggestionId,
+      isHelpful,
+      feedback,
+      timestamp: new Date()
     });
 
-    const suggestedCategory = completion.choices[0].message.content.trim();
-    res.json({ category: suggestedCategory });
+    // Update AI model with the feedback
+    await aiService.processFeedback(suggestionId, isHelpful, feedback);
+
+    res.json({ message: 'Feedback recorded successfully' });
   } catch (error) {
-    console.error('Category suggestion error:', error);
-    res.status(500).json({ message: 'Error suggesting category' });
-  }
-});
-
-// Get priority suggestions for a reminder
-router.post('/suggest-priority', auth, async (req, res) => {
-  try {
-    const { title, description, dueDate } = req.body;
-    if (!title) {
-      return res.status(400).json({ message: 'Reminder title is required' });
-    }
-
-    const prompt = `Based on this reminder title: "${title}" 
-      ${description ? `description: "${description}"` : ''} 
-      ${dueDate ? `and due date: "${dueDate}"` : ''}, 
-      suggest the most appropriate priority level from: low, medium, high.
-      Consider urgency and importance. Return only the priority level.`;
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0,
-      max_tokens: 10
-    });
-
-    const suggestedPriority = completion.choices[0].message.content.trim();
-    res.json({ priority: suggestedPriority });
-  } catch (error) {
-    console.error('Priority suggestion error:', error);
-    res.status(500).json({ message: 'Error suggesting priority' });
+    console.error('AI feedback error:', error);
+    res.status(500).json({ message: 'Error processing feedback' });
   }
 });
 

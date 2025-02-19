@@ -1,55 +1,83 @@
 import express from 'express';
-import auth from '../middleware/auth.js';
+import authMiddleware from '../middleware/auth.js';
 import { apiLimiter } from '../middleware/rateLimiter.js';
 import Reminder from '../models/Reminder.js';
 import User from '../models/User.js';
 import { cacheService } from '../services/cache.js';
+import { db } from '../config/firebase.js';
 
 const router = express.Router();
 
 // Get user's dashboard data
-router.get('/dashboard', auth, apiLimiter, async (req, res) => {
+router.get('/dashboard', authMiddleware, async (req, res) => {
   try {
     // Check cache first
-    const cacheKey = `user:${req.user.userId}:dashboard`;
+    const cacheKey = `dashboard:${req.user.uid}`;
     const cachedData = await cacheService.get(cacheKey);
     if (cachedData) {
       return res.json(cachedData);
     }
 
-    // Get user data with stats
-    const user = await User.findById(req.user.userId);
+    // Get user data
+    const user = await User.findByUid(req.user.uid);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Get reminders for the next 24 hours
+    const now = new Date();
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     
-    // Get upcoming reminders
-    const upcomingReminders = await Reminder.findUpcoming(req.user.userId, 5);
-    
+    const remindersRef = db.collection('reminders');
+    const upcomingSnapshot = await remindersRef
+      .where('userId', '==', req.user.uid)
+      .where('date', '>=', now)
+      .where('date', '<=', tomorrow)
+      .where('isCompleted', '==', false)
+      .orderBy('date', 'asc')
+      .limit(5)
+      .get();
+
+    const upcomingReminders = upcomingSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
     // Get reminders by category
-    const remindersByCategory = await Reminder.aggregate([
-      { $match: { user: user._id, isCompleted: false } },
-      { $group: { _id: '$category', count: { $sum: 1 } } }
-    ]);
-    
-    // Get completion rate
-    const totalReminders = user.stats.totalReminders;
-    const completedReminders = user.stats.completedReminders;
-    const completionRate = totalReminders > 0 
-      ? (completedReminders / totalReminders * 100).toFixed(1)
+    const categoriesSnapshot = await remindersRef
+      .where('userId', '==', req.user.uid)
+      .where('isCompleted', '==', false)
+      .get();
+
+    const remindersByCategory = categoriesSnapshot.docs.reduce((acc, doc) => {
+      const reminder = doc.data();
+      acc[reminder.category] = (acc[reminder.category] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Calculate completion rate
+    const stats = user.stats || {
+      totalReminders: 0,
+      completedReminders: 0,
+      streakDays: 0,
+    };
+
+    const completionRate = stats.totalReminders > 0
+      ? (stats.completedReminders / stats.totalReminders * 100).toFixed(1)
       : 0;
 
     const dashboardData = {
       user: {
         displayName: user.displayName,
         email: user.email,
-        stats: user.stats
+        stats,
       },
       upcomingReminders,
       remindersByCategory,
       stats: {
-        totalReminders,
-        completedReminders,
-        completionRate,
-        streakDays: user.stats.streakDays
-      }
+        ...stats,
+        completionRate: parseFloat(completionRate),
+      },
     };
 
     // Cache dashboard data
@@ -57,13 +85,65 @@ router.get('/dashboard', auth, apiLimiter, async (req, res) => {
 
     res.json(dashboardData);
   } catch (error) {
-    console.error('Get dashboard data error:', error);
-    res.status(500).json({ message: 'Error fetching dashboard data' });
+    console.error('Get dashboard error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Share a reminder with other users
+router.post('/share/:id', authMiddleware, async (req, res) => {
+  try {
+    const { emails } = req.body;
+    if (!emails || !Array.isArray(emails) || emails.length === 0) {
+      return res.status(400).json({ message: 'Valid email list is required' });
+    }
+
+    const reminder = await Reminder.findById(req.params.id);
+    if (!reminder) {
+      return res.status(404).json({ message: 'Reminder not found' });
+    }
+
+    if (reminder.userId !== req.user.uid) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    // Get user IDs for the provided emails
+    const usersSnapshot = await db.collection('users')
+      .where('email', 'in', emails)
+      .get();
+
+    const userIds = usersSnapshot.docs.map(doc => doc.id);
+    if (userIds.length === 0) {
+      return res.status(404).json({ message: 'No valid users found' });
+    }
+
+    // Update reminder with shared users
+    const updatedReminder = await Reminder.shareWith(req.params.id, userIds);
+
+    res.json({
+      message: 'Reminder shared successfully',
+      sharedWith: userIds.length,
+      reminder: updatedReminder,
+    });
+  } catch (error) {
+    console.error('Share reminder error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get reminders shared with the user
+router.get('/shared-with-me', authMiddleware, async (req, res) => {
+  try {
+    const reminders = await Reminder.findSharedWithUser(req.user.uid);
+    res.json(reminders);
+  } catch (error) {
+    console.error('Get shared reminders error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
 // Get user's statistics
-router.get('/stats', auth, apiLimiter, async (req, res) => {
+router.get('/stats', authMiddleware, apiLimiter, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const dateRange = {
@@ -118,7 +198,7 @@ router.get('/stats', auth, apiLimiter, async (req, res) => {
 });
 
 // Update user preferences
-router.put('/preferences', auth, apiLimiter, async (req, res) => {
+router.put('/preferences', authMiddleware, apiLimiter, async (req, res) => {
   try {
     const { theme, notifications, timezone } = req.body;
     

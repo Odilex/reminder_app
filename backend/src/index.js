@@ -1,13 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
 import helmet from 'helmet';
 import compression from 'compression';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 import winston from 'winston';
-import connectMongoose from './config/database.js';
 import { cacheService } from './services/cache.js';
 
 // Routes
@@ -18,7 +14,7 @@ import aiRoutes from './routes/ai.js';
 
 // Services
 import { schedulerService } from './services/scheduler.js';
-import './config/firebase.js';
+import { aiService } from './services/ai.js';
 
 dotenv.config();
 
@@ -27,17 +23,17 @@ const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.json()
+    winston.format.json(),
   ),
   transports: [
     new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' })
-  ]
+    new winston.transports.File({ filename: 'combined.log' }),
+  ],
 });
 
 if (process.env.NODE_ENV !== 'production') {
   logger.add(new winston.transports.Console({
-    format: winston.format.simple()
+    format: winston.format.simple(),
   }));
 }
 
@@ -53,7 +49,7 @@ app.use(compression());
 app.use(cors({
   origin: process.env.CORS_ORIGIN || '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Firebase-Token']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Firebase-Token'],
 }));
 
 // Body parser middleware
@@ -65,7 +61,7 @@ app.use((req, res, next) => {
   logger.info({
     method: req.method,
     path: req.path,
-    ip: req.ip
+    ip: req.ip,
   });
   next();
 });
@@ -73,9 +69,20 @@ app.use((req, res, next) => {
 // Initialize services and database connections
 const initializeApp = async () => {
   try {
-    // Connect to MongoDB
-    await connectMongoose();
-    logger.info('Connected to MongoDB');
+    logger.info('Starting service initialization...');
+
+    // Initialize Firebase
+    const firebase = await import('./config/firebase.js');
+    logger.info('Firebase configuration loaded');
+
+    // Initialize other services
+    await Promise.all([
+      aiService.initialize().then(() => logger.info('AI service initialized')),
+      cacheService.initialize().then(() => logger.info('Cache service initialized')),
+      schedulerService.initialize().then(() => logger.info('Scheduler service initialized'))
+    ]);
+
+    logger.info('All services initialized successfully');
 
     // Routes
     app.use('/api/auth', authRoutes);
@@ -89,48 +96,43 @@ const initializeApp = async () => {
         status: 'ok',
         timestamp: new Date(),
         services: {
-          mongodb: mongoose.connection.readyState === 1
-        }
+          firebase: true,
+          cache: true,
+          scheduler: true,
+          ai: true,
+        },
       });
     });
 
     // Error handling middleware
-    app.use((err, req, res, next) => {
+    app.use((err, req, res, _next) => {
       logger.error({
         message: err.message,
         stack: err.stack,
         path: req.path,
-        method: req.method
+        method: req.method,
       });
 
       res.status(err.status || 500).json({
-        message: process.env.NODE_ENV === 'production' 
+        message: process.env.NODE_ENV === 'production'
           ? 'An error occurred'
-          : err.message
+          : err.message,
       });
     });
 
-    // Start server
-    const PORT = process.env.PORT || 5000;
-    const server = app.listen(PORT, () => {
-      logger.info(`Server running on port ${PORT}`);
+    // Start the server
+    const port = process.env.PORT || 3000;
+    const server = app.listen(port, () => {
+      logger.info(`Server is running on port ${port}`);
     });
 
     // Graceful shutdown
     const shutdown = async () => {
       logger.info('Shutting down gracefully...');
-      
-      server.close(async () => {
+
+      server.close(() => {
         logger.info('HTTP server closed');
-        
-        try {
-          await mongoose.connection.close();
-          logger.info('MongoDB connection closed');
-          process.exit(0);
-        } catch (error) {
-          logger.error('Error during shutdown:', error);
-          process.exit(1);
-        }
+        process.exit(0);
       });
     };
 
@@ -138,7 +140,7 @@ const initializeApp = async () => {
     process.on('SIGINT', shutdown);
 
   } catch (error) {
-    logger.error('Application initialization error:', error);
+    logger.error('Failed to initialize app:', error);
     process.exit(1);
   }
 };

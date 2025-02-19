@@ -1,159 +1,138 @@
 import OpenAI from 'openai';
-import { NlpManager } from 'node-nlp';
 import moment from 'moment-timezone';
+import { db } from '../config/firebase.js';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
-const nlpManager = new NlpManager({ languages: ['en'] });
-
-// Train NLP manager with common reminder patterns
-async function trainNLP() {
-  // Time expressions
-  nlpManager.addDocument('en', 'tomorrow', 'time.tomorrow');
-  nlpManager.addDocument('en', 'next week', 'time.next_week');
-  nlpManager.addDocument('en', 'in 2 days', 'time.in_days');
-  nlpManager.addDocument('en', 'next month', 'time.next_month');
-
-  // Categories
-  nlpManager.addDocument('en', 'work meeting', 'category.work');
-  nlpManager.addDocument('en', 'doctor appointment', 'category.health');
-  nlpManager.addDocument('en', 'shopping list', 'category.shopping');
-  nlpManager.addDocument('en', 'personal task', 'category.personal');
-
-  // Priority levels
-  nlpManager.addDocument('en', 'urgent', 'priority.high');
-  nlpManager.addDocument('en', 'important', 'priority.high');
-  nlpManager.addDocument('en', 'can wait', 'priority.low');
-  nlpManager.addDocument('en', 'when possible', 'priority.low');
-
-  await nlpManager.train();
-}
-
-trainNLP();
-
-export const aiService = {
-  // Generate smart reminder suggestions based on user patterns
-  async generateSuggestions(userReminders) {
+class AIService {
+  async initialize() {
     try {
-      const prompt = `Based on these reminders: ${JSON.stringify(userReminders)}, 
+      console.log('AI service initialized successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to initialize AI service:', error);
+      return false;
+    }
+  }
+
+  async generateSuggestions(reminders) {
+    try {
+      const prompt = `Based on these reminders: ${JSON.stringify(reminders)}, 
         suggest 3 potential new reminders that would be helpful for the user. 
-        Consider patterns in timing, categories, and priorities.`;
+        Consider patterns in timing, categories, and priorities. Format the response
+        as a JSON array of objects with title, category, and priority properties.`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [{ role: "user", content: prompt }],
+        model: 'gpt-4',
+        messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
-        max_tokens: 200
+        max_tokens: 500,
       });
 
-      return JSON.parse(completion.choices[0].message.content);
+      const suggestions = JSON.parse(completion.choices[0].message.content);
+      return suggestions;
     } catch (error) {
-      console.error('AI suggestion error:', error);
-      return [];
-    }
-  },
-
-  // Parse natural language input to structured reminder data
-  async parseNaturalLanguage(text) {
-    try {
-      const result = await nlpManager.process('en', text);
-      const entities = {};
-
-      // Extract date/time
-      const dateTimeMatch = await this.extractDateTime(text);
-      if (dateTimeMatch) {
-        entities.date = dateTimeMatch.date;
-        entities.time = dateTimeMatch.time;
-      }
-
-      // Extract category
-      const categoryMatch = result.entities.find(e => e.entity.startsWith('category'));
-      if (categoryMatch) {
-        entities.category = categoryMatch.entity.split('.')[1];
-      }
-
-      // Extract priority
-      const priorityMatch = result.entities.find(e => e.entity.startsWith('priority'));
-      if (priorityMatch) {
-        entities.priority = priorityMatch.entity.split('.')[1];
-      }
-
-      return entities;
-    } catch (error) {
-      console.error('Natural language parsing error:', error);
-      return {};
-    }
-  },
-
-  // Extract date and time from text
-  async extractDateTime(text) {
-    try {
-      const prompt = `Extract the date and time from this text: "${text}". 
-        Return only a JSON object with "date" in ISO format and "time" in 12-hour format.`;
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0,
-        max_tokens: 100
-      });
-
-      return JSON.parse(completion.choices[0].message.content);
-    } catch (error) {
-      console.error('DateTime extraction error:', error);
-      return null;
-    }
-  },
-
-  // Analyze reminder patterns and generate insights
-  async generateInsights(userReminders) {
-    try {
-      const prompt = `Analyze these reminders: ${JSON.stringify(userReminders)}. 
-        Provide insights about: 
-        1. Most common categories
-        2. Typical scheduling patterns
-        3. Task completion rates
-        4. Suggestions for better time management
-        Return as JSON.`;
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.5,
-        max_tokens: 300
-      });
-
-      return JSON.parse(completion.choices[0].message.content);
-    } catch (error) {
-      console.error('Insight generation error:', error);
-      return {};
-    }
-  },
-
-  // Predict optimal reminder times based on user patterns
-  async predictOptimalTime(reminder, userHistory) {
-    try {
-      const prompt = `Given this reminder: ${JSON.stringify(reminder)} 
-        and user history: ${JSON.stringify(userHistory)}, 
-        suggest the optimal time for this reminder based on:
-        1. User's typical active hours
-        2. Similar reminder patterns
-        3. Task completion success rates
-        Return only a JSON with suggested "date" and "time".`;
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.3,
-        max_tokens: 100
-      });
-
-      return JSON.parse(completion.choices[0].message.content);
-    } catch (error) {
-      console.error('Time prediction error:', error);
+      console.error('Generate suggestions error:', error);
       return null;
     }
   }
-}; 
+
+  async parseNaturalLanguage(text) {
+    try {
+      const prompt = `Parse this reminder text: "${text}"
+        Extract the following information and return it as a JSON object:
+        - time: when the reminder should occur (extract both date and time if present)
+        - category: the most appropriate category (work, personal, shopping, health, other)
+        - priority: the priority level (low, medium, high) based on urgency words
+        - title: a clear, concise title for the reminder
+        - description: any additional details (if present)`;
+
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0,
+        max_tokens: 200,
+      });
+
+      return JSON.parse(completion.choices[0].message.content);
+    } catch (error) {
+      console.error('Parse natural language error:', error);
+      return null;
+    }
+  }
+
+  async generateInsights(reminders) {
+    try {
+      const prompt = `Analyze these reminders: ${JSON.stringify(reminders)}
+        Generate insights about the user's patterns and habits.
+        Include:
+        - Most productive times of day
+        - Most common categories
+        - Completion rate patterns
+        - Suggestions for improvement
+        Return the analysis as a JSON object.`;
+
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.5,
+        max_tokens: 500,
+      });
+
+      return JSON.parse(completion.choices[0].message.content);
+    } catch (error) {
+      console.error('Generate insights error:', error);
+      return null;
+    }
+  }
+
+  async predictOptimalTime(reminder, userId) {
+    try {
+      // Get user's completed reminders of the same category
+      const remindersRef = db.collection('reminders');
+      const snapshot = await remindersRef
+        .where('userId', '==', userId)
+        .where('category', '==', reminder.category)
+        .where('isCompleted', '==', true)
+        .get();
+
+      const completedReminders = snapshot.docs.map(doc => doc.data());
+
+      const prompt = `Based on these completed reminders: ${JSON.stringify(completedReminders)},
+        suggest an optimal time for a new ${reminder.category} reminder.
+        Consider patterns in completion times and success rates.
+        Return the result as a JSON object with time (HH:mm format) and confidence (0-1) properties.`;
+
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 100,
+      });
+
+      return JSON.parse(completion.choices[0].message.content);
+    } catch (error) {
+      console.error('Predict optimal time error:', error);
+      return null;
+    }
+  }
+
+  async processFeedback(suggestionId, isHelpful, feedback) {
+    try {
+      await db.collection('ai_feedback').add({
+        suggestionId,
+        isHelpful,
+        feedback,
+        timestamp: new Date(),
+      });
+      return true;
+    } catch (error) {
+      console.error('Process feedback error:', error);
+      return false;
+    }
+  }
+}
+
+export const aiService = new AIService(); 

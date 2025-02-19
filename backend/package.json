@@ -1,7 +1,7 @@
 {
   "name": "reminder-app-backend",
   "version": "1.0.0",
-  "description": "Backend server for the Reminder App with MongoDB, Firebase, and AI features",
+  "description": "Backend server for the Reminder App with Firebase and AI features",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
@@ -36,9 +36,7 @@
     "jsonwebtoken": "^9.0.2",
     "moment": "^2.30.1",
     "moment-timezone": "^0.5.44",
-    "mongoose": "^8.1.1",
     "node-cron": "^3.0.3",
-    "node-nlp": "^4.27.0",
     "openai": "^4.24.1",
     "rate-limit-redis": "^4.2.0",
     "redis": "^4.6.12",

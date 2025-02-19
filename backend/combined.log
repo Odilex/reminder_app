@@ -63,3 +63,44 @@
 {"level":"info","message":"Connected to MongoDB","timestamp":"2025-02-17T09:38:10.306Z"}
 {"level":"info","message":"Server running on port 5000","timestamp":"2025-02-17T09:38:10.341Z"}
 {"level":"info","message":"Shutting down gracefully...","timestamp":"2025-02-17T09:43:20.022Z"}
+{"level":"info","message":"Server is running on port 5000","timestamp":"2025-02-19T13:38:00.462Z"}
+{"level":"info","message":"Server is running on port 5000","timestamp":"2025-02-19T13:38:19.678Z"}
+{"level":"info","message":"Server is running on port 5000","timestamp":"2025-02-19T13:38:33.721Z"}
+{"level":"info","message":"Server is running on port 5000","timestamp":"2025-02-19T13:38:38.767Z"}
+{"level":"info","message":"Server is running on port 5000","timestamp":"2025-02-19T13:39:10.388Z"}
+{"level":"info","message":"Server is running on port 5000","timestamp":"2025-02-19T13:43:33.709Z"}
+{"level":"info","message":"Starting service initialization...","timestamp":"2025-02-19T13:44:53.623Z"}
+{"level":"info","message":"Firebase configuration loaded","timestamp":"2025-02-19T13:44:53.629Z"}
+{"level":"info","message":"AI service initialized","timestamp":"2025-02-19T13:44:53.640Z"}
+{"level":"info","message":"Scheduler service initialized","timestamp":"2025-02-19T13:44:53.641Z"}
+{"level":"info","message":"Cache service initialized","timestamp":"2025-02-19T13:44:53.643Z"}
+{"level":"info","message":"All services initialized successfully","timestamp":"2025-02-19T13:44:53.643Z"}
+{"level":"info","message":"Server is running on port 5000","timestamp":"2025-02-19T13:44:53.653Z"}
+{"level":"info","message":"Starting service initialization...","timestamp":"2025-02-19T13:46:17.923Z"}
+{"level":"info","message":"Firebase configuration loaded","timestamp":"2025-02-19T13:46:17.939Z"}
+{"level":"info","message":"AI service initialized","timestamp":"2025-02-19T13:46:17.964Z"}
+{"level":"info","message":"Scheduler service initialized","timestamp":"2025-02-19T13:46:17.966Z"}
+{"level":"info","message":"Cache service initialized","timestamp":"2025-02-19T13:46:17.968Z"}
+{"level":"info","message":"All services initialized successfully","timestamp":"2025-02-19T13:46:17.969Z"}
+{"level":"info","message":"Server is running on port 5000","timestamp":"2025-02-19T13:46:17.988Z"}
+{"level":"info","message":"Starting service initialization...","timestamp":"2025-02-19T13:46:23.922Z"}
+{"level":"info","message":"Firebase configuration loaded","timestamp":"2025-02-19T13:46:24.139Z"}
+{"level":"info","message":"AI service initialized","timestamp":"2025-02-19T13:46:24.154Z"}
+{"level":"info","message":"Scheduler service initialized","timestamp":"2025-02-19T13:46:24.156Z"}
+{"level":"info","message":"Cache service initialized","timestamp":"2025-02-19T13:46:24.177Z"}
+{"level":"info","message":"All services initialized successfully","timestamp":"2025-02-19T13:46:24.178Z"}
+{"level":"info","message":"Server is running on port 5000","timestamp":"2025-02-19T13:46:24.183Z"}
+{"level":"info","message":"Starting service initialization...","timestamp":"2025-02-19T14:11:40.189Z"}
+{"level":"info","message":"Firebase configuration loaded","timestamp":"2025-02-19T14:11:40.370Z"}
+{"level":"info","message":"AI service initialized","timestamp":"2025-02-19T14:11:40.378Z"}
+{"level":"info","message":"Scheduler service initialized","timestamp":"2025-02-19T14:11:40.379Z"}
+{"level":"info","message":"Cache service initialized","timestamp":"2025-02-19T14:11:40.395Z"}
+{"level":"info","message":"All services initialized successfully","timestamp":"2025-02-19T14:11:40.396Z"}
+{"level":"info","message":"Server is running on port 5000","timestamp":"2025-02-19T14:11:40.401Z"}
+{"level":"info","message":"Starting service initialization...","timestamp":"2025-02-19T14:11:45.422Z"}
+{"level":"info","message":"Firebase configuration loaded","timestamp":"2025-02-19T14:11:45.659Z"}
+{"level":"info","message":"AI service initialized","timestamp":"2025-02-19T14:11:45.664Z"}
+{"level":"info","message":"Scheduler service initialized","timestamp":"2025-02-19T14:11:45.694Z"}
+{"level":"info","message":"Cache service initialized","timestamp":"2025-02-19T14:11:45.696Z"}
+{"level":"info","message":"All services initialized successfully","timestamp":"2025-02-19T14:11:45.697Z"}
+{"level":"info","message":"Server is running on port 5000","timestamp":"2025-02-19T14:11:45.708Z"}

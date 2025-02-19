@@ -3,6 +3,17 @@ class CacheService {
     this.memoryCache = new Map();
   }
 
+  async initialize() {
+    try {
+      await this.connect();
+      console.log('Cache service initialized successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to initialize cache service:', error);
+      return false;
+    }
+  }
+
   async connect() {
     // No-op for memory cache
     return Promise.resolve();
@@ -50,53 +61,45 @@ class CacheService {
 
   // Cache user's reminders
   async cacheUserReminders(userId, reminders) {
-    const key = `user:${userId}:reminders`;
-    return this.set(key, reminders);
+    return this.set(`reminders:${userId}`, reminders);
   }
 
   // Get cached user's reminders
   async getCachedUserReminders(userId) {
-    const key = `user:${userId}:reminders`;
-    return this.get(key);
+    return this.get(`reminders:${userId}`);
   }
 
   // Cache AI suggestions
   async cacheAISuggestions(userId, suggestions) {
-    const key = `user:${userId}:ai_suggestions`;
-    return this.set(key, suggestions, 7200); // Cache for 2 hours
+    return this.set(`suggestions:${userId}`, suggestions);
   }
 
   // Get cached AI suggestions
   async getCachedAISuggestions(userId) {
-    const key = `user:${userId}:ai_suggestions`;
-    return this.get(key);
+    return this.get(`suggestions:${userId}`);
   }
 
   // Cache user insights
   async cacheUserInsights(userId, insights) {
-    const key = `user:${userId}:insights`;
-    return this.set(key, insights, 86400); // Cache for 24 hours
+    return this.set(`insights:${userId}`, insights);
   }
 
   // Get cached user insights
   async getCachedUserInsights(userId) {
-    const key = `user:${userId}:insights`;
-    return this.get(key);
+    return this.get(`insights:${userId}`);
   }
 
   // Clear user's cache
   async clearUserCache(userId) {
-    const keys = [
-      `user:${userId}:reminders`,
-      `user:${userId}:ai_suggestions`,
-      `user:${userId}:insights`
-    ];
-
     try {
-      keys.forEach(key => this.del(key));
+      await Promise.all([
+        this.del(`reminders:${userId}`),
+        this.del(`suggestions:${userId}`),
+        this.del(`insights:${userId}`),
+      ]);
       return true;
     } catch (error) {
-      console.error('Clear cache error:', error);
+      console.error('Clear user cache error:', error);
       return false;
     }
   }
